@@ -20,5 +20,7 @@ from registration import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('workshop/', views.workshop)
+    path('workshop/', views.workshop),
+    path('location/', views.location),
+    path('location/<int:id>/', views.location_id)
 ]
