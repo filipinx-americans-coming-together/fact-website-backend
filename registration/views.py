@@ -6,24 +6,42 @@ from django.views.decorators.csrf import csrf_exempt
 
 import json
 
+@csrf_exempt
 def workshop(request):
     if request.method == "POST":
-        # get data
-        workshop_title = request.POST.get("workshop_title")
-
-        # create workshop
-        workshop = Workshop.objects.create(workshop_title=workshop_title)
+        workshop = Workshop.objects.create(title=request.POST.get("title"), description=request.POST.get("description"), facilitators=request.POST.get("facilitators"), location=request.POST.get("location"), session=request.POST.get("session"))
         workshop.save()
         
-        return HttpResponse("workshop created: " + str(workshop))
+        return HttpResponse(status=200)
     elif request.method == "GET":
         data = serializers.serialize('json', Workshop.objects.all())
         return HttpResponse(data, content_type="application/json")
+    else:
+        return HttpResponse(status=400)
+    
+@csrf_exempt
+def workshop_id(request, id):
+    if request.method == "GET":
+        data = serializers.serialize('json', Workshop.objects.filter(id=id))
+        return HttpResponse(data, content_type="application/json")
+    elif request.method == "PUT":
+        try:
+            data = json.loads(request.body)
+            Workshop = Workshop.objects.get(id=id)
+            Workshop.title = data.get("title", Workshop.title)
+            Workshop.description = data.get("description", Workshop.description)
+            Workshop.facilitators = data.get("facilitators", Workshop.facilitators)
+            Workshop.location = data.get("location", Workshop.location)
+            Workshop.session = data.get("session", Workshop.session)
+            Workshop.save()
+            return HttpResponse(status=200)
+        except Workshop.DoesNotExist:
+            return JsonResponse({"error": "Workshop not found"}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
     elif request.method == "DELETE":
-        id = request.POST.get("workshop_id")
-
         Workshop.objects.filter(id=id).delete()
-        return HttpResponse(f"workshop {id} deleted")
+        return HttpResponse(status=200)
     else:
         return HttpResponse(status=400)
 
