@@ -20,8 +20,5 @@ from registration import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('workshop/', views.workshop),
-    path('workshop/<int:id>/', views.workshop_id),
-    path('location/', views.location),
-    path('location/<int:id>/', views.location_id)
+    path('registration/', include('registration.urls')),
 ]
