@@ -9,8 +9,6 @@ import json
 """
 PROBLEMS WITH CODE:
 1. Remove csrf_exempt from all functions
-2. PUT requests use request.body instead of request.POST (may need to use raw data for all requests)
-3. Figure out relationship between Workshop and Location
 """
 
 @csrf_exempt
@@ -54,7 +52,6 @@ def workshop_id(request, id):
         return HttpResponse(data, content_type="application/json")
     elif request.method == "PUT":
         try:
-            # Link between Workshop and Location changes pk of workshop when location is changed
             data = json.loads(request.body)
             location = get_object_or_404(Location, id=data.get("location"))
 
