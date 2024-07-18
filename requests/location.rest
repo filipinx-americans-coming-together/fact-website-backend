@@ -1,0 +1,14 @@
+GET http://127.0.0.1:8000/location/
+
+###
+POST http://127.0.0.1:8000/location/ HTTP/1.1
+content-type: application/json
+
+{
+    "room_num": "1",
+    "buiding": "Building",
+    "capacity": "100"
+}
+
+###
+DELETE http://127.0.0.1:8000/location/2/ HTTP/1.1
