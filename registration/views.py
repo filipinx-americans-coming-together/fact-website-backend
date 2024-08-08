@@ -74,22 +74,25 @@ def workshop_id(request, id):
 @csrf_exempt
 def location(request):
     if request.method == "POST":
-        data = json.loads(request.body)
-        obj1 = Location.objects.filter(room_num=data.get("room_num"))
-        obj2 = Location.objects.filter(building=data.get("building"))
-        if (obj1.exists() and obj2.exists()):
-            if (obj1[0].id == obj2[0].id):
-                return HttpResponse("Location already exists")
+        try:
+            data = json.loads(request.body)
+            obj1 = Location.objects.filter(room_num=data.get("room_num"))
+            obj2 = Location.objects.filter(building=data.get("building"))
+            if (obj1.exists() and obj2.exists()):
+                if (obj1[0].id == obj2[0].id):
+                    return HttpResponse("Location already exists")
 
-        location = Location.objects.create(
-            room_num=data.get("room_num"),
-            building=data.get("building"),
-            capacity=data.get("capacity")
-        )
-        
-        location.save()
+            location = Location.objects.create(
+                room_num=data.get("room_num"),
+                building=data.get("building"),
+                capacity=data.get("capacity")
+            )
+            
+            location.save()
 
-        return HttpResponse(status=200)
+            return HttpResponse(status=200)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
     elif request.method == "GET":
         data = serializers.serialize('json', Location.objects.all())
         return HttpResponse(data, content_type="application/json")
