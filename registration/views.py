@@ -10,11 +10,6 @@ from django.contrib.auth import authenticate, login, logout
 
 import json
 
-"""
-PROBLEMS WITH CODE:
-1. Remove csrf_exempt from all functions
-"""
-
 def serialize_user(user):
     delegate_data = serializers.serialize('json', Delegate.objects.filter(pk=user.delegate.pk))
     user_data = serializers.serialize('json', User.objects.filter(pk=user.pk))
@@ -44,6 +39,9 @@ def serialize_workshop(workshop):
 def workshop(request):
     # Note: Does not account for when attributes are missing in POST request
     if request.method == "POST":
+        if not user.is_authenticated or not hasattr(user, 'facilitator'):
+            return HttpResponse("You must be a facilitator to create a workshop", status=403)
+        
         try:
             data = json.loads(request.body)
             location = get_object_or_404(Location, id=data.get("location"))
@@ -79,13 +77,20 @@ def workshop_id(request, id):
     if request.method == "GET":
         return HttpResponse(serialize_workshop(workshop), content_type="application/json")
     elif request.method == "PUT":
+        if not user.is_authenticated or not hasattr(user, 'facilitator'):
+            return HttpResponse("You do not have permission to edit this workshop", status=403)
+        
         try:
             data = json.loads(request.body)
             location = get_object_or_404(Location, id=data.get("location"))
 
+            facilitators = json.loads(workshop.facilitators)
+            if user.facilitator.id not in facilitators:
+                return HttpResponse("You do not have permission to edit this workshop", status=403)
+
             workshop.title = data.get("title", workshop.title)
             workshop.description = data.get("description", workshop.description)
-            workshop.facilitators = data.get("facilitators", workshop.facilitators)
+            workshop.facilitators = facilitators
             workshop.location = location
             workshop.session = data.get("session", workshop.session)
 
@@ -94,6 +99,13 @@ def workshop_id(request, id):
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
     elif request.method == "DELETE":
+        if not user.is_authenticated or not hasattr(user, 'facilitator'):
+            return HttpResponse('You do not have permission to delete this workshop', status=403)
+
+        facilitators = json.loads(workshop.facilitators)
+        if user.facilitator.id not in facilitators:
+            return HttpResponse('You do not have permission to delete this workshop', status=403)
+
         workshop.delete()
         return HttpResponse(status=200)
     else:

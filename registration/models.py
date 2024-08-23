@@ -9,6 +9,13 @@ class Location(models.Model):
 
     def __str__(self):
         return f"{self.room_num} - {self.building}, session {self.session}"
+    
+class Facilitator(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    bio = models.TextField(default="", blank=True)
+
+    def __str__(self):
+        return f'{self.user.last_name}, {self.user.first_name} - {self.user.email}'
 
 class Workshop(models.Model):
     title = models.CharField(max_length=100, default="")
