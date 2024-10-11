@@ -12,10 +12,11 @@ class Location(models.Model):
     
 class Facilitator(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    bio = models.TextField(default="", blank=True)
+    fa_name = models.CharField(max_length=100, blank=True)
+    fa_contact = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
-        return f'{self.user.last_name}, {self.user.first_name} - {self.user.email}'
+        return f'{self.user.last_name}, {self.user.first_name} - {self.fa_name}'
 
 class Workshop(models.Model):
     title = models.CharField(max_length=100, default="")
@@ -51,3 +52,9 @@ class Registration(models.Model):
     delegate = models.ForeignKey(Delegate, on_delete=models.CASCADE)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
+class FacilitatorWorkshop(models.Model):
+    facilitator = models.ForeignKey(Facilitator, on_delete=models.CASCADE)
+    workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f'{self.facilitator} - {self.workshop}'

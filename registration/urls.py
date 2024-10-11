@@ -8,6 +8,7 @@ urlpatterns = [
     path('workshop/<int:id>/', views.workshop_id, name='workshop_id'),
     path('location/', views.location, name='location'),
     path('location/<int:id>/', views.location_id, name='location_id'),
+    path('facilitator/', views.facilitator, name='facilitator'),
     path('user/', views.user),
     path('users/', views.users),
     path('login/', views.login_user),
