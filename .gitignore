@@ -1,2 +1,8 @@
 # omit virtual environment folder
 .venv
+
+# omit cache
+__pycache__
+
+# omit db file
+.sqlite3
