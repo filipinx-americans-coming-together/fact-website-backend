@@ -5,7 +5,7 @@
 .env
 
 # omit cache
-# __pycache__
+__pycache__
 
 # omit db file
 .sqlite3
