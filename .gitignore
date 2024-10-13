@@ -3,3 +3,9 @@
 
 # omit env variables
 .env
+
+# omit cache
+__pycache__
+
+# omit db file
+.sqlite3
