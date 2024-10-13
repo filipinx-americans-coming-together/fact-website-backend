@@ -1,6 +1,9 @@
 # omit virtual environment folder
 .venv
 
+# omit env variables
+.env
+
 # omit cache
 __pycache__
 
