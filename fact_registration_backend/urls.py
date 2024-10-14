@@ -17,7 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+app_name = 'registration'
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('registration/', include('registration.urls')),
+    path('fact-admin/', include('fact_admin.urls'))
 ]
