@@ -8,4 +8,4 @@
 __pycache__
 
 # omit db file
-.sqlite3
+*.sqlite3
