@@ -5,9 +5,15 @@ from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.core.validators import validate_email
 from django.contrib.auth import authenticate, login, logout
+from django.core.mail import send_mail
 
 from registration import serializers
 from registration.models import Delegate, Registration, School, Workshop
+
+import environ
+
+env = environ.Env()
+environ.Env.read_env()
 
 @csrf_exempt
 def users(request):
@@ -198,6 +204,8 @@ def user(request):
         delegate = Delegate(user=user, pronouns=pronouns, year=year, school=school)
         delegate.save()
 
+        workshop_details = {}
+
         # set registration data
         for workshop_id in workshop_ids:
             workshop = Workshop.objects.get(pk=workshop_id)
@@ -205,8 +213,24 @@ def user(request):
             registration = Registration(delegate=delegate, workshop=workshop)
             registration.save()
 
+            # save workshop names for email
+            workshop_details[workshop.session] = workshop.title
+
         # login
         login(request, user)
+
+        # send email
+        subject = f'FACT 2024 Registration Confirmation - {f_name} {l_name}'
+
+        registration_details = ''
+        for session in workshop_details:
+            registration_details += f'Session {session}: {workshop_details[session]}\n'
+
+        body = f'Thank you for registering for FACT 2024!\n\nYou have registered for the following workshops\n\n{registration_details}\nTo update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard'
+        from_email = env('EMAIL_HOST_USER')
+        to_email = [email]
+
+        send_mail(subject, body, from_email, to_email)
 
         return HttpResponse(serializers.serialize_user(user), content_type='application/json')
     elif request.method == 'DELETE':
