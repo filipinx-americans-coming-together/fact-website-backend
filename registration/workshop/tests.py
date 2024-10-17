@@ -1,9 +1,10 @@
 import json
+import pandas as pd
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 from registration.models import Location, Workshop
-
 
 class WorkshopAPITestCase(TestCase):
     def setUp(self):
@@ -30,7 +31,7 @@ class WorkshopAPITestCase(TestCase):
                 "Facilitator 1",
                 "Facilitator 2"
             ],
-            "location": self.location.id,
+            # "location": self.location.id,
             "session": 1
         }
         response = self.client.post(self.workshop_url, json.dumps(data), content_type="application/json")
@@ -100,3 +101,63 @@ class WorkshopAPITestCase(TestCase):
         response = self.client.post(self.workshop_url, json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Workshop in current session already exists")
+
+class WorkshopPOSTBulk(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse("registration:workshops_bulk")
+
+        # files
+        titles = ["workshop 1", "workshop 2", "workshop 3"]
+        sessions = [1, 2, 3]
+        descriptions = ["description 1", "description 2", "description 3"]
+        facilitators = ["fac1, fac11", "fac2", "fac3"]
+        data = {"title": titles, "Session": sessions, "description": descriptions, "facilitators": facilitators}
+        df = pd.DataFrame(data)
+
+        self.good_workshops = "./registration/workshop/data/good_workshops.xlsx"
+        df.to_excel(self.good_workshops, index=False)
+        
+
+    def test_not_admin(self):
+        with open(self.good_workshops, 'rb') as f:
+            workshop_file = SimpleUploadedFile(
+                name='good_workshops.xlsx',
+                content=f.read(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+
+        response = self.client.post(self.url, {"workshops": workshop_file})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEquals(len(Workshop.objects.all()), 0)
+
+    def test_no_file(self):
+        pass
+
+    def test_workshops_exist(self):
+        pass
+
+    def test_no_file(self):
+        pass
+
+    def test_invalid_file(self):
+        pass
+
+    def test_duplicate_cols(self):
+        pass
+
+    def test_not_enough_locations(self):
+        pass
+
+    def test_missing_cols(self):
+        pass
+
+    def test_missing_vals(self):
+        pass
+
+    def test_invalid_session(self):
+        pass
+
+    def test_creates_workshops(self):
+        pass

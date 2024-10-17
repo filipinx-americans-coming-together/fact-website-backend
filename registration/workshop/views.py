@@ -15,7 +15,10 @@ def workshop(request):
     if request.method == "POST":      
         try:
             data = json.loads(request.body)
-            location = get_object_or_404(Location, id=data.get("location"))
+
+            location = None
+            if "location" in data:
+                location = get_object_or_404(Location, id=data.get("location"))
 
             w = Workshop.objects.filter(title=data.get("title"))
 
@@ -49,25 +52,31 @@ def workshops_bulk(request):
     """
     if request.method == "POST":
         # must be admin
-        # if not request.user.groups.filter(name="FACTAdmin").exists():
-        #     return JsonResponse(
-        #         {"message": "Must be admin to make this request"}, status=403
-        #     )
+        if not request.user.groups.filter(name="FACTAdmin").exists():
+            return JsonResponse(
+                {"message": "Must be admin to make this request"}, status=403
+            )
 
         # must have no workshops
-        # if len(Workshop.objects.all()) > 0:
-        #     return JsonResponse({"message": "Delete existing workshops before attempting to upload"}, status=409)
+        if len(Workshop.objects.all()) > 0:
+            return JsonResponse({"message": "Delete existing workshops before attempting to upload"}, status=409)
         
         if "workshops" not in request.FILES:
             return JsonResponse({"message": "Must include file"}, status=400)
 
         file = request.FILES["workshops"]
-        workshop_df = pd.read_excel(file)
+        workshop_df = None
+
+        try:
+            workshop_df = pd.read_excel(file)
+        except:
+            return JsonResponse({"message": "Error reading file"})
+
         workshop_df = workshop_df.drop_duplicates()
 
         # must have enough locations for each workshop
-        # if len(workshop_df) > len(Location.objects.all()):
-        #     return JsonResponse({"message": f"Not enough locations ({len(Location.objects.all())} locations for {len(workshop_df)} workshops)"})
+        if len(workshop_df) > len(Location.objects.all()):
+            return JsonResponse({"message": f"Not enough locations ({len(Location.objects.all())} locations for {len(workshop_df)} workshops)"})
 
         # validate data
         columns_set = set(workshop_df.columns)
