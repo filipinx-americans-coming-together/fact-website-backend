@@ -73,6 +73,8 @@ def workshops_bulk(request):
             return JsonResponse({"message": "Error reading file"}, status=400)
 
         workshop_df = workshop_df.drop_duplicates()
+        # when loading in df, pandas will add ".#" to duplicate columns
+        workshop_df.columns = [x.lower().split(".")[0] for x in workshop_df.columns]
 
         # validate data
         columns_set = set(workshop_df.columns)
@@ -88,12 +90,25 @@ def workshops_bulk(request):
             
         if workshop_df.isnull().values.any():
             return JsonResponse({"message": "Missing values - make sure there are no empty cells"}, status=400)
-        
-        # TODO check session numbers are between 1 and 3?
 
-        # must have enough locations for each workshop
-        if len(workshop_df) > len(Location.objects.all()):
-            return JsonResponse({"message": f"Not enough locations ({len(Location.objects.all())} locations for {len(workshop_df)} workshops)"}, status=409)
+        # check sessions and locations
+        workshop_count = {
+            1: 0,
+            2: 0,
+            3: 0
+        }
+
+        valid_sessions = set([1, 2, 3])
+
+        for idx, rows in workshop_df.iterrows():
+            if rows["session"] not in valid_sessions:
+                return JsonResponse({"message": f"{rows['session']} is not a valid session number"}, status=400)
+            
+            workshop_count[rows["session"]] += 1
+        
+        for i in range(1, 4):
+            if workshop_count[i] > len(Location.objects.filter(session=i)):
+                return JsonResponse({"message": f"Not enough locations for given workshops in session {i}"}, status=409)
 
         # save workshops
         for index, row in workshop_df.iterrows():
@@ -110,7 +125,7 @@ def workshops_bulk(request):
 
         data = django_serializers.serialize('json', Workshop.objects.all())
 
-        return HttpResponse(data, content="application/json")
+        return JsonResponse(data, safe=False)
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
 

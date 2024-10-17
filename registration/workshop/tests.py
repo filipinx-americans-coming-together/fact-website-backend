@@ -115,7 +115,8 @@ class WorkshopPOSTBulk(TestCase):
         sessions = [1, 2, 3]
         descriptions = ["description 1", "description 2", "description 3"]
         facilitators = ["fac1, fac11", "fac2", "fac3"]
-        data = {"title": titles, "Session": sessions, "description": descriptions, "facilitators": facilitators}
+        # capitalization to make sure processing is case insensitive
+        data = {"title": titles, "SessIOn": sessions, "description": descriptions, "facilitators": facilitators}
         self.good_workshops_df = pd.DataFrame(data)
 
         good_workshops_url = "./registration/workshop/data/good_workshops.xlsx"
@@ -151,7 +152,7 @@ class WorkshopPOSTBulk(TestCase):
 
         # missing cols
         missing_cols_df = self.good_workshops_df.copy()
-        missing_cols_df.drop("description", axis=1)
+        missing_cols_df = missing_cols_df.drop("description", axis=1)
 
         missing_cols_url = "./registration/workshop/data/missing_cols.xlsx"
         missing_cols_df.to_excel(missing_cols_url, index=False)
@@ -181,7 +182,7 @@ class WorkshopPOSTBulk(TestCase):
 
         # invalid session
         invalid_session_df = self.good_workshops_df.copy()
-        invalid_session_df.at[1, "Session"] = 4
+        invalid_session_df.at[1, "SessIOn"] = 4
 
         invalid_session_url = "./registration/workshop/data/invalid_session.xlsx"
         invalid_session_df.to_excel(invalid_session_url, index=False)
@@ -323,6 +324,11 @@ class WorkshopPOSTBulk(TestCase):
         self.assertEqual(len(Workshop.objects.all()), 0)
 
     def test_creates_workshops(self):
+        # add locations
+        for i in range(1, 4):
+            Location.objects.create(session=i, building="building", room_num=f"{i}", capacity=20)
+
+        # login
         self.client.login(username=self.username, password=self.password)
 
         response = self.client.post(self.url, {"workshops": self.workshop_file})
@@ -335,5 +341,5 @@ class WorkshopPOSTBulk(TestCase):
                 title=row["title"],
                 description=row["description"],
                 facilitators=row["facilitators"],
-                session=row["session"]
+                session=row["SessIOn"]
             ).exists())
