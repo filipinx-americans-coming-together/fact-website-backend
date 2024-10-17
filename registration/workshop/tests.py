@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import pandas as pd
 
@@ -110,6 +111,9 @@ class WorkshopPOSTBulk(TestCase):
         self.client = Client()
         self.url = reverse("registration:workshops_bulk")
 
+        self.base_path = "./registration/workshop/data"
+        os.mkdir(self.base_path)
+
         # good file
         titles = ["workshop 1", "workshop 2", "workshop 3"]
         sessions = [1, 2, 3]
@@ -119,7 +123,7 @@ class WorkshopPOSTBulk(TestCase):
         data = {"title": titles, "SessIOn": sessions, "description": descriptions, "facilitators": facilitators}
         self.good_workshops_df = pd.DataFrame(data)
 
-        good_workshops_url = "./registration/workshop/data/good_workshops.xlsx"
+        good_workshops_url = f"{self.base_path}/good_workshops.xlsx"
         self.good_workshops_df.to_excel(good_workshops_url, index=False)
 
         # open file
@@ -139,7 +143,7 @@ class WorkshopPOSTBulk(TestCase):
             True
         )
 
-        duplicate_cols_url = "./registration/workshop/data/duplicate_cols.xlsx"
+        duplicate_cols_url = f"{self.base_path}/duplicate_cols.xlsx"
         duplicate_cols_df.to_excel(duplicate_cols_url, index=False)
 
         # open file
@@ -154,7 +158,7 @@ class WorkshopPOSTBulk(TestCase):
         missing_cols_df = self.good_workshops_df.copy()
         missing_cols_df = missing_cols_df.drop("description", axis=1)
 
-        missing_cols_url = "./registration/workshop/data/missing_cols.xlsx"
+        missing_cols_url = f"{self.base_path}/missing_cols.xlsx"
         missing_cols_df.to_excel(missing_cols_url, index=False)
 
         # open file
@@ -169,7 +173,7 @@ class WorkshopPOSTBulk(TestCase):
         missing_vals_df = self.good_workshops_df.copy()
         missing_vals_df.at[1, "title"] = None
 
-        missing_vals_url = "./registration/workshop/data/missing_vals.xlsx"
+        missing_vals_url = f"{self.base_path}/missing_vals.xlsx"
         missing_vals_df.to_excel(missing_vals_url, index=False)
 
         # open file
@@ -184,7 +188,7 @@ class WorkshopPOSTBulk(TestCase):
         invalid_session_df = self.good_workshops_df.copy()
         invalid_session_df.at[1, "SessIOn"] = 4
 
-        invalid_session_url = "./registration/workshop/data/invalid_session.xlsx"
+        invalid_session_url = f"{self.base_path}/invalid_session.xlsx"
         invalid_session_df.to_excel(invalid_session_url, index=False)
 
         # open file
@@ -194,6 +198,14 @@ class WorkshopPOSTBulk(TestCase):
                 content=f.read(),
                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
+
+        self.created_files = [
+            good_workshops_url,
+            duplicate_cols_url, 
+            missing_cols_url, 
+            missing_vals_url, 
+            invalid_session_url
+        ]
 
         # admin user
         group = Group(id=1, name="FACTAdmin")
@@ -215,6 +227,13 @@ class WorkshopPOSTBulk(TestCase):
         not_admin = User(username=self.not_admin_username)
         not_admin.set_password(self.not_admin_password)
         not_admin.save()
+
+    def tearDown(self):
+        # clean up created files
+        for path in self.created_files:
+            os.remove(path)
+
+        os.rmdir(self.base_path)
 
 
     def test_not_admin(self):
