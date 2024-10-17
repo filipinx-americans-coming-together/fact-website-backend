@@ -70,13 +70,9 @@ def workshops_bulk(request):
         try:
             workshop_df = pd.read_excel(file)
         except:
-            return JsonResponse({"message": "Error reading file"})
+            return JsonResponse({"message": "Error reading file"}, status=400)
 
         workshop_df = workshop_df.drop_duplicates()
-
-        # must have enough locations for each workshop
-        if len(workshop_df) > len(Location.objects.all()):
-            return JsonResponse({"message": f"Not enough locations ({len(Location.objects.all())} locations for {len(workshop_df)} workshops)"})
 
         # validate data
         columns_set = set(workshop_df.columns)
@@ -88,13 +84,17 @@ def workshops_bulk(request):
         
         for i in range(len(expected_columns)):
             if expected_columns[i] not in columns_set:
-                return JsonResponse({"message", f"Missing column {expected_columns[i]}"}, status=400)
+                return JsonResponse({"message": f"Missing column {expected_columns[i]}"}, status=400)
             
         if workshop_df.isnull().values.any():
             return JsonResponse({"message": "Missing values - make sure there are no empty cells"}, status=400)
         
         # TODO check session numbers are between 1 and 3?
-        
+
+        # must have enough locations for each workshop
+        if len(workshop_df) > len(Location.objects.all()):
+            return JsonResponse({"message": f"Not enough locations ({len(Location.objects.all())} locations for {len(workshop_df)} workshops)"}, status=409)
+
         # save workshops
         for index, row in workshop_df.iterrows():
             workshop = Workshop(
