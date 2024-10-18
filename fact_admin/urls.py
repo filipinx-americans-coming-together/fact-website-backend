@@ -10,6 +10,6 @@ urlpatterns = [
     path('login/', login_views.login_admin, name='login_admin'),
     path('notification/', notification_views.notification, name='notification'),
     path('notifications/', notification_views.notifications, name='notifications'),
-    path('agenda-item/', agenda_views.agenda_items_id, name='agenda-item'),
+    path('agenda-item/<int:id>/', agenda_views.agenda_items_id, name='agenda-item'),
     path('agenda-items/', agenda_views.agenda_items, name='agenda-items')
 ]

@@ -1,40 +1,17 @@
 import json
-from django.http import JsonResponse
-from fact_admin.models import AgendaItem, Session
+
+from django.http import HttpResponse, JsonResponse
+from fact_admin.models import AgendaItem
 from django.core import serializers as django_serializers
-
-# TODO do we need endpoints for editing session info directly/single sessions?
-
-
-def sessions(request):
-    if request.method == "GET":
-        data = django_serializers.serialize("json", Session.objects.all())
-        return JsonResponse(data, safe=False)
-
-    else:
-        return JsonResponse({"message": "method not allowed"}, status=405)
+from django.utils.dateparse import parse_datetime
 
 
 def agenda_items(request):
     if request.method == "GET":
-        data = django_serializers.serialize("json", AgendaItem.objects.all())
-        return JsonResponse(data, safe=False)
-
-    else:
-        return JsonResponse({"message": "method not allowed"}, status=405)
-
-
-def agenda_items_id(request, id):
-    if request.method == "GET":
-        data = AgendaItem.objects.filter(pk=id)
-
-        if not data.exists():
-            return JsonResponse(
-                {"message": f"Agenda item with id {id} does not exist"}, status=404
-            )
-
-        return JsonResponse(django_serializers.serialize("json", data), safe=False)
-
+        data = django_serializers.serialize(
+            "json", AgendaItem.objects.all().order_by("start_time")
+        )
+        return HttpResponse(data, content_type="application/json")
     elif request.method == "POST":
         # make sure user is allowed
         if not request.user.groups.filter(name="FACTAdmin").exists():
@@ -52,7 +29,22 @@ def agenda_items_id(request, id):
 
         if not title or not start_time or not end_time or not building:
             return JsonResponse(
-                {"message": "Must provide title, start_time, end_time, and building"},
+                {"message": "Must provide title, start time, end time, and building"},
+                status=400,
+            )
+
+        if title == "" or start_time == "" or end_time == "" or building == "":
+            return JsonResponse(
+                {"message": "Must provide title, start time, end time, and building"},
+                status=400,
+            )
+
+        start_time = parse_datetime(start_time)
+        end_time = parse_datetime(end_time)
+
+        if start_time > end_time:
+            return JsonResponse(
+                {"message": "End time can not be before start time"},
                 status=400,
             )
 
@@ -66,23 +58,26 @@ def agenda_items_id(request, id):
         )
         new_agenda_item.save()
 
-        return JsonResponse(
-            django_serializers.serialize(
-                AgendaItem.objects.filter(pk=new_agenda_item.pk)
-            ),
-            safe=False
+        data = django_serializers.serialize(
+            "json", AgendaItem.objects.filter(pk=new_agenda_item.pk)
         )
+        return HttpResponse(data, content_type="application/json")
 
-    elif request.method == "DELETE":
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+def agenda_items_id(request, id):
+    if request.method == "DELETE":
         # make sure user is allowed
         if not request.user.groups.filter(name="FACTAdmin").exists():
             return JsonResponse(
                 {"message": "Must be admin to make this request"}, status=403
             )
-        
+
         if not AgendaItem.objects.filter(pk=id).exists():
             return JsonResponse({"message": "Agenda item not found"}, status=404)
-        
+
         AgendaItem.objects.get(pk=id).delete()
 
         return JsonResponse({"message": "Delete success"})
