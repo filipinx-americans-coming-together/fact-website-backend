@@ -21,5 +21,6 @@ app_name = 'registration'
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('registration/', include('registration.urls')),
-    path('fact-admin/', include('fact_admin.urls'))
+    path('fact-admin/', include('fact_admin.urls')),
+    path('verification/', include('one_time_verification.urls'))
 ]
