@@ -96,6 +96,8 @@ class Command(BaseCommand):
 
         email.send()
 
+        self.stdout.write(self.style.SUCCESS("Spreadsheet sent successfully"))
+
         # clean up
         os.remove(path)
         os.rmdir(base_path)
