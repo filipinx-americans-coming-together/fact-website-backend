@@ -35,22 +35,6 @@ class Command(BaseCommand):
         user_df = pandas.DataFrame(data=users)
         user_df.set_index("id", inplace=True)
 
-        registrations = Registration.objects.all().values()
-        registration_df = pandas.DataFrame(data=registrations)
-        registration_df.set_index("id", inplace=True)
-
-        session1 = Workshop.objects.filter(session=1).values()
-        session1_df = pandas.DataFrame(data=session1)
-        # session1_df.set_index("id", inplace=True)
-
-        session2 = Workshop.objects.filter(session=2).values()
-        session2_df = pandas.DataFrame(data=session2)
-        # session2_df.set_index("id", inplace=True)
-
-        session3 = Workshop.objects.filter(session=3).values()
-        session3_df = pandas.DataFrame(data=session3)
-        # session3_df.set_index("id", inplace=True)
-
         schools = School.objects.all().values()
         schools_df = pandas.DataFrame(data=schools)
         schools_df.set_index("id", inplace=True)
@@ -64,10 +48,14 @@ class Command(BaseCommand):
             all_data["school"].append(schools_df.loc[row["school_id"], "name"])
             all_data["email"].append(user_df.loc[user_id, "email"])
 
-            # TODO finish this, needs workshops to have their own pk
-            all_data["session_1"].append("")
-            all_data["session_2"].append("")
-            all_data["session_3"].append("")
+            registrations = Registration.objects.filter(delegate_id=idx).values()
+
+            for registration in registrations:
+                workshop = Workshop.objects.get(pk=registration["workshop_id"])
+
+                # assumes workshops have session 1, 2, or 3
+                key = f"session_{workshop.session}"
+                all_data[key].append(workshop.title)
 
         # save file
         final_df = pandas.DataFrame(data=all_data)
