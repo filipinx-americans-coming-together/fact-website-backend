@@ -10,6 +10,7 @@ app_name = 'registration'
 urlpatterns = [
     path('workshop/', workshop_views.workshop, name='workshop'),
     path('workshop/<int:id>/', workshop_views.workshop_id, name='workshop_id'),
+    path('workshops/registrations/<int:id>/', workshop_views.workshop_registration, name='workshop_registration'),
     path('location/', location_views.location, name='location'),
     path('location/<int:id>/', location_views.location_id, name='location_id'),
     path('facilitator/', facilitator_views.facilitator, name='facilitator'),
