@@ -63,3 +63,8 @@ class FacilitatorWorkshop(models.Model):
 
     def __str__(self):
         return f"{self.facilitator} - {self.workshop}"
+
+class PasswordReset(models.Model):
+    email = models.EmailField()
+    token = models.CharField(max_length=100)
+    expiration = models.DateTimeField()
