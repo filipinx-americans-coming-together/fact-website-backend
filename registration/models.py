@@ -29,7 +29,7 @@ class Workshop(models.Model):
     title = models.CharField(max_length=100, default="")
     description = models.TextField()
     facilitators = models.JSONField(default=list)
-    location = models.OneToOneField(Location, on_delete=models.CASCADE, null=True)
+    location = models.OneToOneField(Location, on_delete=models.CASCADE, null=True, blank=True)
     session = models.IntegerField(default=0)
 
     def __str__(self):
