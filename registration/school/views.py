@@ -15,7 +15,7 @@ def schools(request):
     """
 
     if request.method == "GET":
-        school_data = django_serializers.serialize("json", School.objects.all())
+        school_data = django_serializers.serialize("json", School.objects.all().order_by("name"))
 
         return HttpResponse(school_data, content_type="application/json")
     else:
