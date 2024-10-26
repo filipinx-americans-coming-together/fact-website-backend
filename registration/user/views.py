@@ -1,19 +1,22 @@
 import json
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.core.validators import validate_email
 from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils import timezone
 
 from registration import serializers
-from registration.models import Delegate, Registration, School, Workshop
+from registration.models import Delegate, PasswordReset, Registration, School, Workshop
 
 import environ
 
 env = environ.Env()
 environ.Env.read_env()
+
 
 @csrf_exempt
 def users(request):
@@ -22,13 +25,16 @@ def users(request):
 
     GET - get all users
     """
-    
-    if request.method == 'GET':
-        user_data = django_serializers.serialize('json', User.objects.filter(is_superuser=False))
 
-        return HttpResponse(user_data, content_type='application/json')
+    if request.method == "GET":
+        user_data = django_serializers.serialize(
+            "json", User.objects.filter(is_superuser=False)
+        )
+
+        return HttpResponse(user_data, content_type="application/json")
     else:
         return HttpResponse(status=405)
+
 
 @csrf_exempt
 def user(request):
@@ -55,28 +61,30 @@ def user(request):
 
     user = request.user
 
-    if request.method == 'GET':
-        if (not user.is_authenticated):
-            return HttpResponse('No user logged in', status=403)
+    if request.method == "GET":
+        if not user.is_authenticated:
+            return HttpResponse("No user logged in", status=403)
 
-        return HttpResponse(serializers.serialize_user(user), content_type='application/json')
-    elif request.method == 'PUT':
-        if (not user.is_authenticated):
-            return HttpResponse('No user logged in', status=403)
-        
+        return HttpResponse(
+            serializers.serialize_user(user), content_type="application/json"
+        )
+    elif request.method == "PUT":
+        if not user.is_authenticated:
+            return HttpResponse("No user logged in", status=403)
+
         data = json.loads(request.body)
 
-        f_name = data.get('f_name')
-        l_name = data.get('l_name')
-        email = data.get('email')
-        password = data.get('password')
-        pronouns = data.get('pronouns')
-        year = data.get('year')
-        school_id = data.get('school_id')
+        f_name = data.get("f_name")
+        l_name = data.get("l_name")
+        email = data.get("email")
+        password = data.get("password")
+        pronouns = data.get("pronouns")
+        year = data.get("year")
+        school_id = data.get("school_id")
 
-        workshop_1_id = data.get('workshop_1_id')
-        workshop_2_id = data.get('workshop_2_id')
-        workshop_3_id = data.get('workshop_3_id')
+        workshop_1_id = data.get("workshop_1_id")
+        workshop_2_id = data.get("workshop_2_id")
+        workshop_3_id = data.get("workshop_3_id")
 
         workshop_ids = [workshop_1_id, workshop_2_id, workshop_3_id]
 
@@ -84,7 +92,7 @@ def user(request):
 
         if f_name and len(f_name) > 0:
             user.first_name = f_name
-        
+
         if l_name and len(l_name) > 0:
             user.last_name = l_name
 
@@ -92,16 +100,18 @@ def user(request):
             try:
                 validate_email(email)
             except:
-                return HttpResponse('Invalid email', status=400)
+                return HttpResponse("Invalid email", status=400)
 
-            if (email != user.email and User.objects.filter(email=email).exists()):
-                return HttpResponse('Email already in use', status=400)
-            
+            if email != user.email and User.objects.filter(email=email).exists():
+                return HttpResponse("Email already in use", status=400)
+
             user.email = email
-        
+
         if password and len(password) > 0:
             if len(password) < 0:
-                return HttpResponse('Password must be at least 8 characters', status=400)
+                return HttpResponse(
+                    "Password must be at least 8 characters", status=400
+                )
             user.set_password(password)
 
         if pronouns and len(pronouns) > 0:
@@ -120,10 +130,12 @@ def user(request):
                 session = Workshop.objects.get(pk=workshop_id).session
 
                 if session in sessions:
-                    return HttpResponse('Can not register for multiple workshops in a single session')
+                    return HttpResponse(
+                        "Can not register for multiple workshops in a single session"
+                    )
 
                 sessions.append(session)
-        
+
         print(sessions)
         print(workshop_ids)
 
@@ -134,7 +146,7 @@ def user(request):
             # re register
             for workshop_id in workshop_ids:
                 workshop = Workshop.objects.get(pk=workshop_id)
-                
+
                 registration = Registration(delegate=user.delegate, workshop=workshop)
 
                 registration.save()
@@ -142,54 +154,58 @@ def user(request):
         user.save()
         user.delegate.save()
 
-        return HttpResponse(serializers.serialize_user(user), content_type='application/json')
-    elif request.method == 'POST':
+        return HttpResponse(
+            serializers.serialize_user(user), content_type="application/json"
+        )
+    elif request.method == "POST":
         data = json.loads(request.body)
 
-        f_name = data.get('f_name')
-        l_name = data.get('l_name')
-        email = data.get('email')
-        password = data.get('password')
-        pronouns = data.get('pronouns')
-        year = data.get('year')
-        school_id = data.get('school_id')
-        workshop_1_id = data.get('workshop_1_id')
-        workshop_2_id = data.get('workshop_2_id')
-        workshop_3_id = data.get('workshop_3_id')
+        f_name = data.get("f_name")
+        l_name = data.get("l_name")
+        email = data.get("email")
+        password = data.get("password")
+        pronouns = data.get("pronouns")
+        year = data.get("year")
+        school_id = data.get("school_id")
+        workshop_1_id = data.get("workshop_1_id")
+        workshop_2_id = data.get("workshop_2_id")
+        workshop_3_id = data.get("workshop_3_id")
 
         workshop_ids = [workshop_1_id, workshop_2_id, workshop_3_id]
 
         # validate data
         if not f_name or len(f_name) < 1:
-            return HttpResponse('First name must be at least one character', status=400)
-        
+            return HttpResponse("First name must be at least one character", status=400)
+
         if not l_name or len(l_name) < 1:
-            return HttpResponse('Last name must be at least one character', status=400)
-        
+            return HttpResponse("Last name must be at least one character", status=400)
+
         try:
             validate_email(email)
         except:
-            return HttpResponse('Invalid email', status=400)
-        
+            return HttpResponse("Invalid email", status=400)
+
         if User.objects.filter(email=email).exists():
-            return HttpResponse('Email already in use', status=400)
-        
+            return HttpResponse("Email already in use", status=400)
+
         if not password or len(password) < 8:
-            return HttpResponse('Password must be at least 8 characters', status=400)        
+            return HttpResponse("Password must be at least 8 characters", status=400)
 
         sessions = []
         for workshop_id in workshop_ids:
             session = Workshop.objects.get(pk=workshop_id).session
 
             if session in sessions:
-                return HttpResponse('Can not register for multiple workshops in a single session')
+                return HttpResponse(
+                    "Can not register for multiple workshops in a single session"
+                )
 
             sessions.append(session)
 
         # set user data
         user = User(username=email, email=email, first_name=f_name, last_name=l_name)
         user.set_password(password)
-        
+
         user.save()
 
         # set delegate data
@@ -209,7 +225,7 @@ def user(request):
         # set registration data
         for workshop_id in workshop_ids:
             workshop = Workshop.objects.get(pk=workshop_id)
-            
+
             registration = Registration(delegate=delegate, workshop=workshop)
             registration.save()
 
@@ -220,68 +236,156 @@ def user(request):
         login(request, user)
 
         # send email
-        subject = f'FACT 2024 Registration Confirmation - {f_name} {l_name}'
+        subject = f"FACT 2024 Registration Confirmation - {f_name} {l_name}"
 
-        registration_details = ''
+        registration_details = ""
         for session in workshop_details:
-            registration_details += f'Session {session}: {workshop_details[session]}\n'
+            registration_details += f"Session {session}: {workshop_details[session]}\n"
 
-        body = f'Thank you for registering for FACT 2024!\n\nYou have registered for the following workshops\n\n{registration_details}\nTo update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard'
-        from_email = env('EMAIL_HOST_USER')
+        body = f"Thank you for registering for FACT 2024!\n\nYou have registered for the following workshops\n\n{registration_details}\nTo update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard"
+        from_email = env("EMAIL_HOST_USER")
         to_email = [email]
 
         send_mail(subject, body, from_email, to_email)
 
-        return HttpResponse(serializers.serialize_user(user), content_type='application/json')
-    elif request.method == 'DELETE':
-        if (not user.is_authenticated):
-            return HttpResponse('No user logged in', status=403)
-        
+        return HttpResponse(
+            serializers.serialize_user(user), content_type="application/json"
+        )
+    elif request.method == "DELETE":
+        if not user.is_authenticated:
+            return HttpResponse("No user logged in", status=403)
+
         data = serializers.serialize_user(user)
-    
+
         user.delete()
         user.save()
 
-        return HttpResponse(data, content_type='application/json')
-    else: 
+        return HttpResponse(data, content_type="application/json")
+    else:
         return HttpResponse(status=405)
-    
+
+
 @csrf_exempt
 def login_user(request):
     user = request.user
 
-    if request.method == 'POST':
+    if request.method == "POST":
         data = json.loads(request.body)
-        
-        email = data.get('email')
-        password = data.get('password')
+
+        email = data.get("email")
+        password = data.get("password")
 
         if email is None or len(email) == 0:
-            return HttpResponse('Must provide email', status=400)
-    
+            return HttpResponse("Must provide email", status=400)
+
         if password is None or len(password) == 0:
-            return HttpResponse('Must provide password', status=400)
-    
+            return HttpResponse("Must provide password", status=400)
+
         user = authenticate(username=email, password=password)
 
         if user is None:
-            return HttpResponse('Invalid credentials', status=400)
+            return HttpResponse("Invalid credentials", status=400)
 
         login(request, user)
 
-        return HttpResponse(serializers.serialize_user(user), content_type='application/json')
+        return HttpResponse(
+            serializers.serialize_user(user), content_type="application/json"
+        )
     else:
         return HttpResponse(status=405)
+
 
 @csrf_exempt
 def logout_user(request):
     user = request.user
-    if request.method == 'POST':
+    if request.method == "POST":
         if not user.is_authenticated:
-            return HttpResponse('No user logged in', status=403)
+            return HttpResponse("No user logged in", status=403)
 
         logout(request)
 
-        return HttpResponse('Logout successful')
+        return HttpResponse("Logout successful")
     else:
         return HttpResponse(status=405)
+
+
+@csrf_exempt
+def request_password_reset(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        email = data.get("email")
+
+        if not email or email == "":
+            return JsonResponse({"message": "Must provide email"}, status=400)
+
+        try:
+            user = User.objects.get(email=email)
+        except:
+            return JsonResponse(
+                {
+                    "message": "If email is connected to account, reset password link has been sent"
+                }
+            )
+
+        user = User.objects.get(email=email)
+
+        token_generator = PasswordResetTokenGenerator()
+        token = token_generator.make_token(user)
+
+        reset = PasswordReset(
+            email=email,
+            token=token,
+            expiration=timezone.now() + timezone.timedelta(minutes=15),
+        )
+        reset.save()
+
+        reset_url = f"{env('RESET_PASSWORD_URL')}/{token}"
+
+        # send email
+        subject = "FACT Account Password Reset"
+        body = f"Hi {user.first_name}. You are receiving this email because you requested a password reset. Click on the link to create a new password\n\n{reset_url}\n\n If you didn't request a password reset, you can ignore this email. Your password will not be changed. This link will expire in 15 minutes."
+        from_email = env("EMAIL_HOST_USER")
+        to_email = [email]
+
+        send_mail(subject, body, from_email, to_email)
+
+        # always send "success" message even if user doesn't exist
+        return JsonResponse(
+            {
+                "message": "If email is connected to account, reset password link has been sent"
+            }
+        )
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+
+@csrf_exempt
+def reset_password(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        password = data.get("password")
+        token = data.get("token")
+
+        if not password or password == "":
+            return JsonResponse({"message": "Must provide password"}, status=400)
+
+        if not token or token == "":
+            return JsonResponse({"message": "Must provide token"}, status=400)
+
+        PasswordReset.objects.filter(expiration__lt=timezone.now()).delete()
+
+        try:
+            reset = PasswordReset.objects.get(token=token)
+            email = reset.email
+            reset.delete()
+
+            user = User.objects.get(email=email)
+            user.set_password(password)
+        except:
+            return JsonResponse({"message": "Invalid reset token"}, status=409)
+
+        return JsonResponse({"message": "success"})
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
