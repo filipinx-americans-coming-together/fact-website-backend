@@ -47,7 +47,7 @@ class Delegate(models.Model):
     # django user model - https://docs.djangoproject.com/en/5.0/topics/auth/default/#user-objects
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     pronouns = models.CharField(max_length=30, default="")
-    year = models.CharField(max_length=40)
+    year = models.CharField(max_length=40, null=True, default="")
     school = models.ForeignKey(
         School, default=None, null=True, on_delete=models.CASCADE
     )
