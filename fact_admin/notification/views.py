@@ -1,10 +1,10 @@
-
 import json
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.core import serializers
 
 from fact_admin.models import Notification
+
 
 def notification(request):
     """
@@ -60,7 +60,7 @@ def notifications(request):
     if request.method == "GET":
         # get objects that are not expired
         notifications = Notification.objects.filter(
-            expiration__lt=timezone.datetime.now()
+            expiration__gt=timezone.make_aware(timezone.datetime.now())
         )
         return HttpResponse(
             serializers.serialize("json", notifications),

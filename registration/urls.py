@@ -10,6 +10,7 @@ app_name = 'registration'
 urlpatterns = [
     path('workshop/', workshop_views.workshop, name='workshop'),
     path('workshop/<int:id>/', workshop_views.workshop_id, name='workshop_id'),
+    path('workshops/bulk/', workshop_views.workshops_bulk, name='workshops_bulk'),
     path('location/', location_views.location, name='location'),
     path('location/<int:id>/', location_views.location_id, name='location_id'),
     path('facilitator/', facilitator_views.facilitator, name='facilitator'),
@@ -17,5 +18,7 @@ urlpatterns = [
     path('users/', user_views.users),
     path('login/', user_views.login_user),
     path('logout/', user_views.logout_user),
-    path('schools/', school_views.schools)
+    path('schools/', school_views.schools),
+    path('users/request-reset-password/', user_views.request_password_reset),
+    path('users/reset-password/', user_views.reset_password)
 ]
