@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils import timezone
+from django.contrib.auth.password_validation import validate_password
 
 from registration import serializers
 from registration.models import Delegate, PasswordReset, Registration, School, Workshop
@@ -78,6 +79,7 @@ def user(request):
         l_name = data.get("l_name")
         email = data.get("email")
         password = data.get("password")
+        new_password = data.get("new_password")
         pronouns = data.get("pronouns")
         year = data.get("year")
         school_id = data.get("school_id")
@@ -107,10 +109,13 @@ def user(request):
 
             user.email = email
 
-        if password and len(password) > 0:
-            if len(password) < 0:
+        if new_password and len(new_password) > 0:
+            if not authenticate(username=user.username, password=password):
+                return JsonResponse({"message": "Old password does not match"})
+
+            if validate_password(new_password) < 0:
                 return HttpResponse(
-                    "Password must be at least 8 characters", status=400
+                    "Password is not strong enough", status=400
                 )
             user.set_password(password)
 
