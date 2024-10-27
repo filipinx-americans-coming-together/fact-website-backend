@@ -52,14 +52,16 @@ def workshop(request):
             )
 
             workshop.save()
-            return HttpResponse(status=200)
+            data = serializers.serialize_workshop(workshop)
+
+            return HttpResponse(data, content_type="application/json")
         except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
     elif request.method == "GET":
         data = django_serializers.serialize("json", Workshop.objects.all())
         return HttpResponse(data, content_type="application/json")
     else:
-        return HttpResponse(status=400)
+        return JsonResponse({"message": "Method not allowed"}, status=400)
 
 
 @csrf_exempt
@@ -70,15 +72,17 @@ def workshops_bulk(request):
     """
     if request.method == "POST":
         # must be admin
-        # if not request.user.groups.filter(name="FACTAdmin").exists():
-        #     return JsonResponse(
-        #         {"message": "Must be admin to make this request"}, status=403
-        #     )
+        if not request.user.groups.filter(name="FACTAdmin").exists():
+            return JsonResponse(
+                {"message": "Must be admin to make this request"}, status=403
+            )
 
         # must have no workshops
         if len(Workshop.objects.all()) > 0 or len(Facilitator.objects.all()) > 0:
             return JsonResponse(
-                {"message": "Delete existing workshops and facilitators before attempting to upload"},
+                {
+                    "message": "Delete existing workshops and facilitators before attempting to upload"
+                },
                 status=409,
             )
 
@@ -200,7 +204,7 @@ def workshops_bulk(request):
         # session 3 (career panels)
         created_workshops = []
         for index, row in workshop_df[workshop_df["session"] == 3].iterrows():
-            # if facilitator is a facilitator already, do not create account            
+            # if facilitator is a facilitator already, do not create account
             if not User.objects.filter(username=row["email"]).exists():
                 user = User(username=row["email"], email=row["email"])
                 alphabet = string.ascii_letters + string.digits
@@ -291,14 +295,15 @@ def workshop_id(request, id):
             workshop.session = data.get("session", workshop.session)
 
             workshop.save()
-            return HttpResponse(status=200)
+            data = serializers.serialize_workshop(workshop)
+            return HttpResponse(data, content_type="application/json")
         except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
     elif request.method == "DELETE":
         workshop.delete()
-        return HttpResponse(status=200)
+        return JsonResponse({"message": "success"}, status=200)
     else:
-        return HttpResponse(status=400)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 def workshop_registration(request, id):

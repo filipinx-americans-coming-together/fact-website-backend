@@ -27,14 +27,15 @@ def location(request):
 
             location.save()
 
-            return HttpResponse(status=200)
+            data = django_serializers.serialize("json", [location])
+            return HttpResponse(data, content_type="application/json")
         except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
     elif request.method == "GET":
         data = django_serializers.serialize("json", Location.objects.all())
         return HttpResponse(data, content_type="application/json")
     else:
-        return HttpResponse(status=400)
+        return JsonResponse({"message": "Method not allowed"}, status=400)
 
 
 @csrf_exempt
@@ -52,26 +53,27 @@ def location_id(request, id):
             location.capacity = data.get("capacity", location.capacity)
 
             location.save()
-            return HttpResponse(status=200)
+            data = django_serializers.serialize("json", [location])
+            return HttpResponse(data, content_type="application/json")
         except Location.DoesNotExist:
-            return JsonResponse({"error": "Location not found"}, status=404)
+            return JsonResponse({"message": "Location not found"}, status=404)
         except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
     elif request.method == "DELETE":
         Location.objects.filter(id=id).delete()
-        return HttpResponse(status=200)
+        return JsonResponse({"message": "Success"})
     else:
-        return HttpResponse(status=400)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 @csrf_exempt
 def locations_bulk(request):
     if request.method == "POST":
         # must be admin
-        # if not request.user.groups.filter(name="FACTAdmin").exists():
-        #     return JsonResponse(
-        #         {"message": "Must be admin to make this request"}, status=403
-        #     )
+        if not request.user.groups.filter(name="FACTAdmin").exists():
+            return JsonResponse(
+                {"message": "Must be admin to make this request"}, status=403
+            )
 
         # must have no locations
         if len(Location.objects.all()) > 0:

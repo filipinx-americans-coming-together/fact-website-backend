@@ -44,7 +44,7 @@ def login_admin(request):
             content_type="application/json",
         )
     else:
-        return HttpResponse(status=405)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 @csrf_exempt
 def user(request):
@@ -62,4 +62,4 @@ def user(request):
             content_type="application/json",
         )
     else:
-        return HttpResponse(status=405)
+        return JsonResponse({"message": "Method not allowed"}, status=405)

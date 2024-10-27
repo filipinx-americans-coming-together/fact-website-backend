@@ -15,21 +15,23 @@ def schools(request):
     """
 
     if request.method == "GET":
-        school_data = django_serializers.serialize("json", School.objects.all().order_by("name"))
+        school_data = django_serializers.serialize(
+            "json", School.objects.all().order_by("name")
+        )
 
         return HttpResponse(school_data, content_type="application/json")
     else:
-        return HttpResponse(status=405)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 @csrf_exempt
 def schools_bulk(request):
     if request.method == "POST":
         # must be admin
-        # if not request.user.groups.filter(name="FACTAdmin").exists():
-        #     return JsonResponse(
-        #         {"message": "Must be admin to make this request"}, status=403
-        #     )
+        if not request.user.groups.filter(name="FACTAdmin").exists():
+            return JsonResponse(
+                {"message": "Must be admin to make this request"}, status=403
+            )
 
         # must have no schools
         if len(School.objects.all()) > 0:
@@ -72,12 +74,10 @@ def schools_bulk(request):
                 {"message": "Missing values - make sure there are no empty cells"},
                 status=400,
             )
-        
+
         # create schools
         for index, row in school_df.iterrows():
-            school = School(
-                name=row["name"]
-            )
+            school = School(name=row["name"])
             school.save()
 
         data = django_serializers.serialize("json", School.objects.all())
