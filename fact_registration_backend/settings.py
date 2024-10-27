@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'fact_admin',
     'one_time_verification',
-    'variety_show',
     'registration',
     'corsheaders',
 ]
