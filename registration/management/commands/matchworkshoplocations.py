@@ -12,7 +12,7 @@ env = environ.Env()
 environ.Env.read_env()
 
 
-def setLocations(session_num):
+def set_locations(session_num):
     # get/sort workshops
     workshops = Workshop.objects.filter(session=session_num).values()
     workshop_df = pandas.DataFrame(data=workshops)
@@ -64,7 +64,7 @@ class Command(BaseCommand):
         successes = [False] * 3
 
         for i in range(3):
-            successes[i] = setLocations(i + 1)
+            successes[i] = set_locations(i + 1)
 
         # save file
         workshops = Workshop.objects.all().order_by("session").values()

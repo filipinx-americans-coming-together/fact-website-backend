@@ -14,6 +14,8 @@ from registration.models import (
     Registration,
     Workshop,
 )
+from management.commands.matchworkshoplocations import set_locations
+
 from django.core import serializers as django_serializers
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -255,6 +257,9 @@ def workshops_bulk(request):
                 created_workshops.append(row["title"])
 
         # set locations
+        set_locations(1)
+        set_locations(2)
+        set_locations(3)
 
         # email facilitator password links
         subject = "FACT Facilitator Accounts"
