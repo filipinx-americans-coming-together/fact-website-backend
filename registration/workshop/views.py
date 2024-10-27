@@ -273,7 +273,7 @@ def workshops_bulk(request):
 
 @csrf_exempt
 def workshop_id(request, id):
-    workshop = get_object_or_404(Workshop, location_id=id)
+    workshop = get_object_or_404(Workshop, pk=id)
 
     if request.method == "GET":
         return HttpResponse(
