@@ -4,8 +4,10 @@ from django.http import HttpResponse, JsonResponse
 from fact_admin.models import AgendaItem
 from django.core import serializers as django_serializers
 from django.utils.dateparse import parse_datetime
+from django.views.decorators.csrf import csrf_exempt
 
 
+@csrf_exempt
 def agenda_items(request):
     if request.method == "GET":
         data = django_serializers.serialize(
@@ -27,13 +29,13 @@ def agenda_items(request):
         room_num = data.get("room_num")
         session_num = data.get("session_num")
 
-        if not title or not start_time or not end_time or not building:
+        if not title or not start_time or not end_time:
             return JsonResponse(
                 {"message": "Must provide title, start time, end time, and building"},
                 status=400,
             )
 
-        if title == "" or start_time == "" or end_time == "" or building == "":
+        if title == "" or start_time == "" or end_time == "":
             return JsonResponse(
                 {"message": "Must provide title, start time, end time, and building"},
                 status=400,
@@ -54,8 +56,12 @@ def agenda_items(request):
             room_num=room_num,
             start_time=start_time,
             end_time=end_time,
-            session_num=session_num,
         )
+
+        # note this just ignores malformed session data
+        if len(session_num) > 0 and session_num in ["1", "2", "3"]:
+            new_agenda_item.session_num = int(session_num)
+
         new_agenda_item.save()
 
         data = django_serializers.serialize(
@@ -67,6 +73,7 @@ def agenda_items(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
+@csrf_exempt
 def agenda_items_id(request, id):
     if request.method == "DELETE":
         # make sure user is allowed
