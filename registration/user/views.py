@@ -286,24 +286,24 @@ def login_user(request):
     if request.method == "POST":
         data = json.loads(request.body)
 
-        email = data.get("email")
+        username = data.get("username")
         password = data.get("password")
 
-        if email is None or len(email) == 0:
+        if username is None or len(username) == 0:
             return JsonResponse({"message": "Must provide email"}, status=400)
 
         if password is None or len(password) == 0:
             return JsonResponse({"message": "Must provide password"}, status=400)
 
-        user = authenticate(username=email, password=password)
+        user = authenticate(username=username, password=password)
 
         if user is None:
             return JsonResponse({"message": "Invalid credentials"}, status=400)
 
         login(request, user)
-
+        
         return HttpResponse(
-            serializers.serialize_user(user), content_type="application/json"
+            serializers.serialize_facilitator(user), content_type="application/json"
         )
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
@@ -397,6 +397,7 @@ def reset_password(request):
 
             user = User.objects.get(email=email)
             user.set_password(password)
+            user.save()
         except:
             return JsonResponse({"message": "Invalid reset token"}, status=409)
 

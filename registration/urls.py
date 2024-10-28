@@ -15,6 +15,8 @@ urlpatterns = [
     path('location/', location_views.location, name='location'),
     path('location/<int:id>/', location_views.location_id, name='location_id'),
     path('facilitator/', facilitator_views.facilitator, name='facilitator'),
+    path('facilitator/login/', facilitator_views.login_facilitator, name='login'),
+    path('facilitator/set-up/', facilitator_views.facilitator_account_set_up, name='facilitator_set_up'),
     path('user/', user_views.user),
     path('users/', user_views.users),
     path('login/', user_views.login_user),

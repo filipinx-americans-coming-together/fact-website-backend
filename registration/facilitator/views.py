@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.core.validators import validate_email
-from django.contrib.auth import login
+from django.contrib.auth import login, authenticate
 from django.utils import timezone
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
@@ -184,6 +184,78 @@ def facilitator(request):
 
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+@csrf_exempt
+def facilitator_account_set_up(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        email = data.get("email")
+        password = data.get("password")
+        token = data.get("token")
+
+        if not password or password == "":
+            return JsonResponse({"message": "Must provide password"}, status=400)
+
+        if not token or token == "":
+            return JsonResponse({"message": "Must provide token"}, status=400)
+
+        if not email or email == "":
+            return JsonResponse({"message": "Must provide email"}, status=400)
+
+        try:
+            validate_email(email)
+        except:
+            return JsonResponse({"message": "Invalid email"}, status=400)
+
+        AccountSetUp.objects.filter(expiration__lt=timezone.now()).delete()
+
+        try:
+            setup = AccountSetUp.objects.get(token=token)
+            username = setup.username
+            setup.delete()
+
+            user = User.objects.get(username=username)
+            user.set_password(password)
+            user.email = email
+            user.save()
+        except:
+            return JsonResponse({"message": "Invalid set up token"}, status=409)
+
+        return JsonResponse({"message": "success"})
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+@csrf_exempt
+def login_facilitator(request):
+    user = request.user
+
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        username = data.get("username")
+        password = data.get("password")
+
+        if username is None or len(username) == 0:
+            return JsonResponse({"message": "Must provide username"}, status=400)
+
+        if password is None or len(password) == 0:
+            return JsonResponse({"message": "Must provide password"}, status=400)
+
+        user = authenticate(username=username, password=password)
+
+        if user is None:
+            return JsonResponse({"message": "Invalid credentials"}, status=400)
+
+        login(request, user)
+
+        return HttpResponse(
+            serializers.serialize_facilitator(user.facilitator), content_type="application/json"
+        )
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 def create_facilitator_account(department_name):
