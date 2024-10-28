@@ -3,34 +3,56 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from registration.models import Location
+from django.core.exceptions import ValidationError
 from django.core import serializers as django_serializers
-
 import pandas as pd
 
+
+# separate function to validate location data
+def validate_location_data(data):
+    required_fields = ["room_num", "building", "capacity"]
+    missing_fields = [field for field in required_fields if not data.get(field)]
+    if missing_fields:
+        return False, {"message": f"Missing fields: {', '.join(missing_fields)}"}
+    return True, None
 
 @csrf_exempt
 def location(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            obj1 = Location.objects.filter(room_num=data.get("room_num"))
-            obj2 = Location.objects.filter(building=data.get("building"))
-            if obj1.exists() and obj2.exists():
-                if obj1[0].id == obj2[0].id:
-                    return HttpResponse("Location already exists")
+        except json.JSONDecodeError:
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
 
-            location = Location.objects.create(
-                room_num=data.get("room_num"),
-                building=data.get("building"),
-                capacity=data.get("capacity"),
+        is_valid, error_response = validate_location_data(data)
+        if not is_valid:
+            return JsonResponse(error_response, status=400)
+
+        existing_location = Location.objects.filter(
+            room_num=data["room_num"], building=data["building"]
+        ).exists()
+
+        if existing_location:
+            return JsonResponse(
+                {"message": "Location already exists", "location_id": existing_location.id}, 
+                status=409
             )
 
+        # location creation
+        try:
+            location = Location.objects.create(
+                room_num=data["room_num"],
+                building=data["building"],
+                capacity=data["capacity"]
+            )
             location.save()
 
             data = django_serializers.serialize("json", [location])
-            return HttpResponse(data, content_type="application/json")
-        except json.JSONDecodeError:
-            return JsonResponse({"message": "Invalid JSON"}, status=400)
+            return HttpResponse(data, content_type="application/json", status=201)
+        except ValidationError as e:
+            return JsonResponse({"message": str(e)}, status=400)
+        except:
+            return JsonResponse({"message": "INVALID ERROR"}, status=405)
     elif request.method == "GET":
         data = django_serializers.serialize("json", Location.objects.all())
         return HttpResponse(data, content_type="application/json")
