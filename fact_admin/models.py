@@ -13,4 +13,4 @@ class AgendaItem(models.Model):
     room_num = models.CharField(max_length=100)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    session_num = models.IntegerField(null=True)
+    session_num = models.IntegerField(null=True, blank=True)
