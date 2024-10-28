@@ -17,7 +17,7 @@ def serialize_workshop(workshop):
 def serialize_user(user):
     delegate_data = serializers.serialize('json', Delegate.objects.filter(pk=user.delegate.pk))
     user_data = serializers.serialize('json', User.objects.filter(pk=user.pk))
-    registration_data = serializers.serialize('json', Registration.objects.filter(delegate=user.delegate))
+    registration_data = serializers.serialize('json', Registration.objects.filter(user=user))
 
     data = {
         'delegate': json.JSONDecoder().decode(delegate_data),
