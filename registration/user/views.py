@@ -146,13 +146,13 @@ def user(request):
 
         if len(sessions) == 3:
             # clear registered workshops
-            Registration.objects.filter(delegate=user.delegate).delete()
+            Registration.objects.filter(user=user).delete()
 
             # re register
             for workshop_id in workshop_ids:
                 workshop = Workshop.objects.get(pk=workshop_id)
 
-                registration = Registration(delegate=user.delegate, workshop=workshop)
+                registration = Registration(user=user, workshop=workshop)
 
                 registration.save()
 
