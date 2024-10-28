@@ -12,4 +12,7 @@ urlpatterns = [
     path("notifications/", notification_views.notifications, name="notifications"),
     path("agenda-item/<int:id>/", agenda_views.agenda_items_id, name="agenda-item"),
     path("agenda-items/", agenda_views.agenda_items, name="agenda-items"),
+    path(
+        "agenda-items/bulk/", agenda_views.agenda_items_bulk, name="agenda-items-bulk"
+    ),
 ]
