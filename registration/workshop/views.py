@@ -14,7 +14,7 @@ from registration.models import (
     Registration,
     Workshop,
 )
-from management.commands.matchworkshoplocations import set_locations
+from ..management.commands.matchworkshoplocations import set_locations
 
 from django.core import serializers as django_serializers
 from django.views.decorators.csrf import csrf_exempt
