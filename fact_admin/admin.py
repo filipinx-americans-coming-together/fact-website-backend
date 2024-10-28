@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from fact_admin.models import AgendaItem
+from fact_admin.models import AgendaItem, Notification
 
 # Register your models here.
 admin.site.register(AgendaItem)
+admin.site.register(Notification)
