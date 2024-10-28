@@ -53,7 +53,7 @@ def notification(request):
             content_type="application/json",
         )
     else:
-        return HttpResponse(status=405)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 def notifications(request):
@@ -67,4 +67,4 @@ def notifications(request):
             content_type="application/json",
         )
     else:
-        return HttpResponse(status=405)
+        return JsonResponse({"message": "Method not allowed"}, status=405)

@@ -16,16 +16,20 @@ class Facilitator(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     fa_name = models.CharField(max_length=100, blank=True)
     fa_contact = models.CharField(max_length=100, blank=True)
+    department_name = models.CharField(max_length=100)
+    facilitators = models.JSONField(default=list)
+    image_url = models.URLField()
+    bio = models.TextField()
 
     def __str__(self):
-        return f"{self.user.last_name}, {self.user.first_name} - {self.fa_name}"
+        return f"{self.department_name} - {self.fa_name}"
 
 
 class Workshop(models.Model):
     title = models.CharField(max_length=100, default="")
     description = models.TextField()
     facilitators = models.JSONField(default=list)
-    location = models.OneToOneField(Location, on_delete=models.CASCADE, null=True)
+    location = models.OneToOneField(Location, on_delete=models.CASCADE, null=True, blank=True)
     session = models.IntegerField(default=0)
 
     def __str__(self):
@@ -43,7 +47,7 @@ class Delegate(models.Model):
     # django user model - https://docs.djangoproject.com/en/5.0/topics/auth/default/#user-objects
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     pronouns = models.CharField(max_length=30, default="")
-    year = models.CharField(max_length=40)
+    year = models.CharField(max_length=40, null=True, default="")
     school = models.ForeignKey(
         School, default=None, null=True, on_delete=models.CASCADE
     )
@@ -63,6 +67,7 @@ class FacilitatorWorkshop(models.Model):
 
     def __str__(self):
         return f"{self.facilitator} - {self.workshop}"
+
 
 class PasswordReset(models.Model):
     email = models.EmailField()

@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils import timezone
+from django.contrib.auth.password_validation import validate_password
 
 from registration import serializers
 from registration.models import Delegate, PasswordReset, Registration, School, Workshop
@@ -78,6 +79,7 @@ def user(request):
         l_name = data.get("l_name")
         email = data.get("email")
         password = data.get("password")
+        new_password = data.get("new_password")
         pronouns = data.get("pronouns")
         year = data.get("year")
         school_id = data.get("school_id")
@@ -107,11 +109,14 @@ def user(request):
 
             user.email = email
 
-        if password and len(password) > 0:
-            if len(password) < 0:
-                return HttpResponse(
-                    "Password must be at least 8 characters", status=400
+        if new_password and len(new_password) > 0:
+            if not authenticate(username=user.username, password=password):
+                return JsonResponse(
+                    {"message": "Old password does not match"}, status=409
                 )
+
+            if validate_password(new_password) < 0:
+                return HttpResponse("Password is not strong enough", status=400)
             user.set_password(password)
 
         if pronouns and len(pronouns) > 0:
@@ -175,29 +180,38 @@ def user(request):
 
         # validate data
         if not f_name or len(f_name) < 1:
-            return HttpResponse("First name must be at least one character", status=400)
+            return JsonResponse(
+                {"message": "First name must be at least one character"}, status=400
+            )
 
         if not l_name or len(l_name) < 1:
-            return HttpResponse("Last name must be at least one character", status=400)
+            return JsonResponse(
+                {"message": "Last name must be at least one character"}, status=400
+            )
 
         try:
             validate_email(email)
         except:
-            return HttpResponse("Invalid email", status=400)
+            return JsonResponse({"message": "Invalid email"}, status=400)
 
         if User.objects.filter(email=email).exists():
-            return HttpResponse("Email already in use", status=400)
+            return JsonResponse({"message": "Email already in use"}, status=400)
 
         if not password or len(password) < 8:
-            return HttpResponse("Password must be at least 8 characters", status=400)
+            return JsonResponse(
+                {"message": "Password must be at least 8 characters"}, status=400
+            )
 
         sessions = []
         for workshop_id in workshop_ids:
             session = Workshop.objects.get(pk=workshop_id).session
 
             if session in sessions:
-                return HttpResponse(
-                    "Can not register for multiple workshops in a single session"
+                return JsonResponse(
+                    {
+                        "message": "Can not register for multiple workshops in a single session"
+                    },
+                    status=400,
                 )
 
             sessions.append(session)
@@ -253,7 +267,7 @@ def user(request):
         )
     elif request.method == "DELETE":
         if not user.is_authenticated:
-            return HttpResponse("No user logged in", status=403)
+            return JsonResponse({"message": "No user logged in"}, status=403)
 
         data = serializers.serialize_user(user)
 
@@ -262,7 +276,7 @@ def user(request):
 
         return HttpResponse(data, content_type="application/json")
     else:
-        return HttpResponse(status=405)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 @csrf_exempt
@@ -276,15 +290,15 @@ def login_user(request):
         password = data.get("password")
 
         if email is None or len(email) == 0:
-            return HttpResponse("Must provide email", status=400)
+            return JsonResponse({"message": "Must provide email"}, status=400)
 
         if password is None or len(password) == 0:
-            return HttpResponse("Must provide password", status=400)
+            return JsonResponse({"message": "Must provide password"}, status=400)
 
         user = authenticate(username=email, password=password)
 
         if user is None:
-            return HttpResponse("Invalid credentials", status=400)
+            return JsonResponse({"message": "Invalid credentials"}, status=400)
 
         login(request, user)
 
@@ -292,7 +306,7 @@ def login_user(request):
             serializers.serialize_user(user), content_type="application/json"
         )
     else:
-        return HttpResponse(status=405)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 @csrf_exempt
@@ -300,13 +314,13 @@ def logout_user(request):
     user = request.user
     if request.method == "POST":
         if not user.is_authenticated:
-            return HttpResponse("No user logged in", status=403)
+            return JsonResponse({"message": "No user logged in"}, status=403)
 
         logout(request)
 
-        return HttpResponse("Logout successful")
+        return JsonResponse({"message": "Logout successful"})
     else:
-        return HttpResponse(status=405)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 @csrf_exempt

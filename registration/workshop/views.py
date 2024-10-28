@@ -1,13 +1,32 @@
 import json
+import secrets
+import string
 import pandas as pd
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from registration import serializers
-from registration.models import Location, Registration, Workshop
+from registration.models import (
+    Facilitator,
+    Location,
+    PasswordReset,
+    Registration,
+    Workshop,
+)
+from ..management.commands.matchworkshoplocations import set_locations
+
 from django.core import serializers as django_serializers
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils import timezone
+from django.contrib.auth.models import User
+from django.core.mail import send_mail
+
+import environ
+
+env = environ.Env()
+environ.Env.read_env()
 
 
 def workshop(request):
@@ -35,15 +54,18 @@ def workshop(request):
             )
 
             workshop.save()
-            return HttpResponse(status=200)
+            data = serializers.serialize_workshop(workshop)
+
+            return HttpResponse(data, content_type="application/json")
         except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
     elif request.method == "GET":
         data = django_serializers.serialize("json", Workshop.objects.all())
         return HttpResponse(data, content_type="application/json")
     else:
-        return HttpResponse(status=400)
-    
+        return JsonResponse({"message": "Method not allowed"}, status=400)
+
+
 @csrf_exempt
 def workshops_bulk(request):
     """
@@ -58,9 +80,14 @@ def workshops_bulk(request):
             )
 
         # must have no workshops
-        if len(Workshop.objects.all()) > 0:
-            return JsonResponse({"message": "Delete existing workshops before attempting to upload"}, status=409)
-        
+        if len(Workshop.objects.all()) > 0 or len(Facilitator.objects.all()) > 0:
+            return JsonResponse(
+                {
+                    "message": "Delete existing workshops and facilitators before attempting to upload"
+                },
+                status=409,
+            )
+
         if "workshops" not in request.FILES:
             return JsonResponse({"message": "Must include file"}, status=400)
 
@@ -82,57 +109,180 @@ def workshops_bulk(request):
         if len(columns_set) != len(workshop_df.columns):
             return JsonResponse({"message": "Duplicate column names"}, status=400)
 
-        expected_columns = ["title", "session", "description", "facilitators"]
-        
+        expected_columns = [
+            "title",
+            "session",
+            "description",
+            "department_name",
+            "facilitators",
+            "image_url",
+            "bio",
+            "email",
+        ]
+
         for i in range(len(expected_columns)):
             if expected_columns[i] not in columns_set:
-                return JsonResponse({"message": f"Missing column {expected_columns[i]}"}, status=400)
-            
+                return JsonResponse(
+                    {"message": f"Missing column {expected_columns[i]}"}, status=400
+                )
+
         if workshop_df.isnull().values.any():
-            return JsonResponse({"message": "Missing values - make sure there are no empty cells"}, status=400)
+            return JsonResponse(
+                {"message": "Missing values - make sure there are no empty cells"},
+                status=400,
+            )
 
         # check sessions and locations
-        workshop_count = {
-            1: 0,
-            2: 0,
-            3: 0
-        }
+        workshop_count = {1: [], 2: [], 3: []}
 
         valid_sessions = set([1, 2, 3])
 
         for idx, rows in workshop_df.iterrows():
             if rows["session"] not in valid_sessions:
-                return JsonResponse({"message": f"{rows['session']} is not a valid session number"}, status=400)
-            
-            workshop_count[rows["session"]] += 1
-        
+                return JsonResponse(
+                    {"message": f"{rows['session']} is not a valid session number"},
+                    status=400,
+                )
+
+            # need to account for duplicate workshop names because of career panels
+            if rows["title"] not in workshop_count[rows["session"]]:
+                workshop_count[rows["session"]].append(rows["title"])
+
         for i in range(1, 4):
-            if workshop_count[i] > len(Location.objects.filter(session=i)):
-                return JsonResponse({"message": f"Not enough locations for given workshops in session {i}"}, status=409)
+            if len(workshop_count[i]) > len(Location.objects.filter(session=i)):
+                return JsonResponse(
+                    {
+                        "message": f"Not enough locations for given workshops in session {i}"
+                    },
+                    status=409,
+                )
 
-        # save workshops
-        for index, row in workshop_df.iterrows():
+        # save workshops, create facilitator accounts, session 1 and 2
+        facilitator_account_urls = []
+        for index, row in workshop_df[workshop_df["session"].isin([1, 2])].iterrows():
+            # facilitator (if does not exist)
+            # department names for workshop 3 (career panels) may appear in the individual facilitator names of another workshop
+            if not User.objects.filter(email=row["email"]).exists():
+                user = User(username=row["email"], email=row["email"])
+                alphabet = string.ascii_letters + string.digits
+                password = "".join(secrets.choice(alphabet) for i in range(8))
+                user.set_password(password)
+                user.save()
+
+                token_generator = PasswordResetTokenGenerator()
+                token = token_generator.make_token(user)
+
+                reset = PasswordReset(
+                    email=row["email"],
+                    token=token,
+                    expiration=timezone.now() + timezone.timedelta(days=2),
+                )
+                reset.save()
+
+                reset_url = f"{env('RESET_PASSWORD_URL')}/{token}"
+
+                facilitator_account_urls.append(
+                    (row["department_name"], row["email"], reset_url)
+                )
+
+                facilitator = Facilitator(
+                    user=user,
+                    department_name=row["department_name"],
+                    facilitators=row["facilitators"],
+                    image_url=row["image_url"],
+                    bio=row["bio"],
+                )
+                facilitator.save()
+
+            # workshop
             workshop = Workshop(
-                            title=row["title"],
-                            description=row["description"],
-                            facilitators=row["facilitators"],
-                            session=row["session"]
-                        )
-
+                title=row["title"],
+                description=row["description"],
+                facilitators=row["facilitators"],
+                session=row["session"],
+            )
             workshop.save()
 
+        # session 3 (career panels)
+        created_workshops = []
+        for index, row in workshop_df[workshop_df["session"] == 3].iterrows():
+            # if facilitator is a facilitator already, do not create account
+            if not User.objects.filter(username=row["email"]).exists():
+                user = User(username=row["email"], email=row["email"])
+                alphabet = string.ascii_letters + string.digits
+                password = "".join(secrets.choice(alphabet) for i in range(8))
+                user.set_password(password)
+                user.save()
+
+                token_generator = PasswordResetTokenGenerator()
+                token = token_generator.make_token(user)
+
+                reset = PasswordReset(
+                    email=row["email"],
+                    token=token,
+                    expiration=timezone.now() + timezone.timedelta(days=2),
+                )
+                reset.save()
+
+                reset_url = f"{env('RESET_PASSWORD_URL')}/{token}"
+
+                facilitator_account_urls.append(
+                    (row["department_name"], row["email"], reset_url)
+                )
+
+                facilitator = Facilitator(
+                    user=user,
+                    department_name=row["department_name"],
+                    facilitators=row["facilitators"],
+                    image_url=row["image_url"],
+                    bio=row["bio"],
+                )
+                facilitator.save()
+
+            # if title already created ignore
+            if row["title"] not in created_workshops:
+                panelists = workshop_df[workshop_df["title"] == row["title"]][
+                    "facilitators"
+                ].tolist()
+
+                # workshop
+                workshop = Workshop(
+                    title=row["title"],
+                    description=row["description"],
+                    facilitators=json.dumps(panelists),
+                    session=row["session"],
+                )
+                workshop.save()
+
+                created_workshops.append(row["title"])
+
         # set locations
+        set_locations(1)
+        set_locations(2)
+        set_locations(3)
 
-        data = django_serializers.serialize('json', Workshop.objects.all())
+        # email facilitator password links
+        subject = "FACT Facilitator Accounts"
+        body = "Facilitator accounts created"
 
-        return JsonResponse(data, safe=False)
+        for facilitator in facilitator_account_urls:
+            body += f"\nFacilitator: {facilitator[0]}, Email: {facilitator[1]}, Account Link: {facilitator[2]}"
+
+        from_email = env("EMAIL_HOST_USER")
+        to_email = ["fact.it@psauiuc.org"]
+
+        send_mail(subject, body, from_email, to_email)
+
+        data = django_serializers.serialize("json", Workshop.objects.all())
+
+        return HttpResponse(data, content_type="application/json")
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
 @csrf_exempt
 def workshop_id(request, id):
-    workshop = get_object_or_404(Workshop, location_id=id)
+    workshop = get_object_or_404(Workshop, pk=id)
 
     if request.method == "GET":
         return HttpResponse(
@@ -150,14 +300,15 @@ def workshop_id(request, id):
             workshop.session = data.get("session", workshop.session)
 
             workshop.save()
-            return HttpResponse(status=200)
+            data = serializers.serialize_workshop(workshop)
+            return HttpResponse(data, content_type="application/json")
         except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
+            return JsonResponse({"message": "Invalid JSON"}, status=400)
     elif request.method == "DELETE":
         workshop.delete()
-        return HttpResponse(status=200)
+        return JsonResponse({"message": "success"}, status=200)
     else:
-        return HttpResponse(status=400)
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 def workshop_registration(request, id):
