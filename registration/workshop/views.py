@@ -1,13 +1,17 @@
 import json
+import re
 import secrets
 import string
+import unicodedata
 import pandas as pd
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from registration import serializers
+from registration.facilitator.views import create_facilitator_account
 from registration.models import (
+    AccountSetUp,
     Facilitator,
     Location,
     PasswordReset,
@@ -18,7 +22,6 @@ from ..management.commands.matchworkshoplocations import set_locations
 
 from django.core import serializers as django_serializers
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
@@ -162,27 +165,14 @@ def workshops_bulk(request):
         for index, row in workshop_df[workshop_df["session"].isin([1, 2])].iterrows():
             # facilitator (if does not exist)
             # department names for workshop 3 (career panels) may appear in the individual facilitator names of another workshop
-            if not User.objects.filter(email=row["email"]).exists():
-                user = User(username=row["email"], email=row["email"])
-                alphabet = string.ascii_letters + string.digits
-                password = "".join(secrets.choice(alphabet) for i in range(8))
-                user.set_password(password)
-                user.save()
-
-                token_generator = PasswordResetTokenGenerator()
-                token = token_generator.make_token(user)
-
-                reset = PasswordReset(
-                    email=row["email"],
-                    token=token,
-                    expiration=timezone.now() + timezone.timedelta(days=2),
+            if not User.objects.filter(first_name=row["department_name"]).exists():
+                user, token, expiration = create_facilitator_account(
+                    row["department_name"]
                 )
-                reset.save()
-
-                reset_url = f"{env('RESET_PASSWORD_URL')}/{token}"
+                reset_url = f"{env('ACCOUNT_SET_UP_URL')}/{token}"
 
                 facilitator_account_urls.append(
-                    (row["department_name"], row["email"], reset_url)
+                    (row["department_name"], user.username, reset_url)
                 )
 
                 facilitator = Facilitator(
@@ -208,26 +198,14 @@ def workshops_bulk(request):
         for index, row in workshop_df[workshop_df["session"] == 3].iterrows():
             # if facilitator is a facilitator already, do not create account
             if not User.objects.filter(username=row["email"]).exists():
-                user = User(username=row["email"], email=row["email"])
-                alphabet = string.ascii_letters + string.digits
-                password = "".join(secrets.choice(alphabet) for i in range(8))
-                user.set_password(password)
-                user.save()
-
-                token_generator = PasswordResetTokenGenerator()
-                token = token_generator.make_token(user)
-
-                reset = PasswordReset(
-                    email=row["email"],
-                    token=token,
-                    expiration=timezone.now() + timezone.timedelta(days=2),
+                user, token, expiration = create_facilitator_account(
+                    row["department_name"]
                 )
-                reset.save()
 
                 reset_url = f"{env('RESET_PASSWORD_URL')}/{token}"
 
                 facilitator_account_urls.append(
-                    (row["department_name"], row["email"], reset_url)
+                    (row["department_name"], user.username, reset_url)
                 )
 
                 facilitator = Facilitator(

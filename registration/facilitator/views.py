@@ -1,13 +1,19 @@
 import json
+import re
+import secrets
+import string
+import unicodedata
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.core.validators import validate_email
 from django.contrib.auth import login
+from django.utils import timezone
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 from registration import serializers
-from registration.models import Facilitator, FacilitatorWorkshop, Workshop
+from registration.models import AccountSetUp, Facilitator, FacilitatorWorkshop, Workshop
 
 
 @csrf_exempt
@@ -178,3 +184,36 @@ def facilitator(request):
 
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+def create_facilitator_account(department_name):
+    # create username (first 8 letters of provided name + 4 random numbers)
+    normalized_string = unicodedata.normalize("NFKD", department_name)
+    ascii_string = normalized_string.encode("ascii", "ignore").decode("ascii")
+    cleaned_string = re.sub(r"[^a-zA-Z]", "", ascii_string)
+
+    digits = string.digits
+
+    username = cleaned_string[:8]
+
+    for i in range(4):
+        username += secrets.choice(digits)
+
+    user = User(username=username, first_name=department_name)
+    alphabet = string.ascii_letters + string.digits
+    password = "".join(secrets.choice(alphabet) for i in range(8))
+    user.set_password(password)
+    user.save()
+
+    token_generator = PasswordResetTokenGenerator()
+    token = token_generator.make_token(user)
+    expiration = timezone.now() + timezone.timedelta(days=2)
+
+    reset = AccountSetUp(
+        username=username,
+        token=token,
+        expiration=expiration,
+    )
+    reset.save()
+
+    return (user, token, expiration)

@@ -73,3 +73,8 @@ class PasswordReset(models.Model):
     email = models.EmailField()
     token = models.CharField(max_length=100)
     expiration = models.DateTimeField()
+
+class AccountSetUp(models.Model):
+    username = models.CharField()
+    token = models.CharField(max_length=100)
+    expiration = models.DateTimeField()
