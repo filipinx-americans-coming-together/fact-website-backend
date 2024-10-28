@@ -240,7 +240,7 @@ def user(request):
         for workshop_id in workshop_ids:
             workshop = Workshop.objects.get(pk=workshop_id)
 
-            registration = Registration(delegate=delegate, workshop=workshop)
+            registration = Registration(user=user, workshop=workshop)
             registration.save()
 
             # save workshop names for email
