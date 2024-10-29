@@ -5,8 +5,6 @@ from django.core import serializers as django_serializers
 
 from fact_admin.models import RegistrationPermission
 
-# enable/disable registration
-# enable/disable workshops
 # set workshop locations
 # get summary (sheet)
 # get locations (sheet)
@@ -38,6 +36,12 @@ def registration_permission_id(request, id):
             content_type="application/json",
         )
     if request.method == "PUT":
+        # must be admin
+        if not request.user.groups.filter(name="FACTAdmin").exists():
+            return JsonResponse(
+                {"message": "Must be admin to make this request"}, status=403
+            )
+        
         permission = RegistrationPermission.objects.filter(pk=id)
 
         if not permission.exists():
