@@ -13,7 +13,13 @@ from django.utils import timezone
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 from registration import serializers
-from registration.models import AccountSetUp, Facilitator, FacilitatorWorkshop, Workshop
+from registration.models import (
+    AccountSetUp,
+    Facilitator,
+    FacilitatorRegistration,
+    FacilitatorWorkshop,
+    Workshop,
+)
 
 
 @csrf_exempt
@@ -252,21 +258,22 @@ def login_facilitator(request):
         login(request, user)
 
         return HttpResponse(
-            serializers.serialize_facilitator(user.facilitator), content_type="application/json"
+            serializers.serialize_facilitator(user.facilitator),
+            content_type="application/json",
         )
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 def create_facilitator_account(department_name):
-    # create username (first 8 letters of provided name + 4 random numbers)
+    # create username (first 9 letters of provided name + 4 random numbers)
     normalized_string = unicodedata.normalize("NFKD", department_name)
     ascii_string = normalized_string.encode("ascii", "ignore").decode("ascii")
     cleaned_string = re.sub(r"[^a-zA-Z]", "", ascii_string)
 
     digits = string.digits
 
-    username = cleaned_string[:8]
+    username = cleaned_string[:9].lower()
 
     for i in range(4):
         username += secrets.choice(digits)
@@ -289,3 +296,79 @@ def create_facilitator_account(department_name):
     reset.save()
 
     return (user, token, expiration)
+
+
+@csrf_exempt
+def register_facilitator(request):
+    user = request.user
+
+    if request.method == "PUT":
+        print("put")
+        facilitator = Facilitator.objects.filter(user=user).first()
+        if not facilitator:
+            JsonResponse(
+                {"message": "Must be a facilitator to make this request"}, status=403
+            )
+
+        data = json.loads(request.body)
+
+        workshops = data.get("workshops")
+        facilitator_name = data.get("facilitator_name")
+        print("check 1")
+
+        if not facilitator_name or facilitator_name == "":
+            return JsonResponse(
+                {"message": "Must provide facilitator name and workshop"}, status=400
+            )
+
+        if facilitator_name not in [
+            name.strip() for name in facilitator.facilitators.split(",")
+        ]:
+            return JsonResponse(
+                {
+                    "message": f"Could not find facilitator with the name '{facilitator_name}'"
+                },
+                status=404,
+            )
+        
+        sessions = set()
+        for workshop in workshops:
+            if workshop:
+                workshop_obj = Workshop.objects.filter(pk=workshop).first()
+
+                if not workshop_obj:
+                    return JsonResponse(
+                        {"message": "Workshop not found"},
+                        status=404,
+                    )
+
+                if workshop_obj.pk in sessions:
+                    return JsonResponse(
+                        {
+                            "message": "Can not register for more than one workshop in a single session"
+                        },
+                        status=400,
+                    )
+
+                sessions.add(workshop_obj.session)
+
+        # clear workshops
+        FacilitatorRegistration.objects.filter(
+            facilitator_name=facilitator_name
+        ).delete()
+
+        registrations = []
+
+        for workshop in workshops:
+            if workshop:
+                registration = FacilitatorRegistration(
+                    facilitator_name=facilitator_name, workshop_id=workshop
+                )
+                registration.save()
+
+                registrations.append(registration)
+
+        data = django_serializers.serialize("json", registrations)
+        return HttpResponse(data, content_type="application/json")
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)

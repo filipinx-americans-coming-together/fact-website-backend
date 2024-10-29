@@ -13,6 +13,7 @@ from registration.facilitator.views import create_facilitator_account
 from registration.models import (
     AccountSetUp,
     Facilitator,
+    FacilitatorWorkshop,
     Location,
     PasswordReset,
     Registration,
@@ -165,7 +166,11 @@ def workshops_bulk(request):
         for index, row in workshop_df[workshop_df["session"].isin([1, 2])].iterrows():
             # facilitator (if does not exist)
             # department names for workshop 3 (career panels) may appear in the individual facilitator names of another workshop
-            if not User.objects.filter(first_name=row["department_name"]).exists():
+            facilitator = Facilitator.objects.filter(
+                department_name=row["department_name"]
+            ).first()
+
+            if not facilitator:
                 user, token, expiration = create_facilitator_account(
                     row["department_name"]
                 )
@@ -193,11 +198,18 @@ def workshops_bulk(request):
             )
             workshop.save()
 
+            FacilitatorWorkshop.objects.create(
+                facilitator=facilitator, workshop=workshop
+            )
+
         # session 3 (career panels)
-        created_workshops = []
         for index, row in workshop_df[workshop_df["session"] == 3].iterrows():
             # if facilitator is a facilitator already, do not create account
-            if not User.objects.filter(username=row["email"]).exists():
+            facilitator = Facilitator.objects.filter(
+                department_name=row["department_name"]
+            ).first()
+
+            if not facilitator:
                 user, token, expiration = create_facilitator_account(
                     row["department_name"]
                 )
@@ -218,7 +230,8 @@ def workshops_bulk(request):
                 facilitator.save()
 
             # if title already created ignore
-            if row["title"] not in created_workshops:
+            workshop = Workshop.objects.filter(title=row["title"]).first()
+            if not workshop:
                 panelists = workshop_df[workshop_df["title"] == row["title"]][
                     "facilitators"
                 ].tolist()
@@ -232,7 +245,9 @@ def workshops_bulk(request):
                 )
                 workshop.save()
 
-                created_workshops.append(row["title"])
+            FacilitatorWorkshop.objects.create(
+                facilitator=facilitator, workshop=workshop
+            )
 
         # set locations
         set_locations(1)
