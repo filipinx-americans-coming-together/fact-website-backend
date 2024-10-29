@@ -1,13 +1,25 @@
 import json
+import re
+import secrets
+import string
+import unicodedata
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.core.validators import validate_email
-from django.contrib.auth import login
+from django.contrib.auth import login, authenticate
+from django.utils import timezone
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 from registration import serializers
-from registration.models import Facilitator, FacilitatorWorkshop, Workshop
+from registration.models import (
+    AccountSetUp,
+    Facilitator,
+    FacilitatorRegistration,
+    FacilitatorWorkshop,
+    Workshop,
+)
 
 
 @csrf_exempt
@@ -176,5 +188,185 @@ def facilitator(request):
 
         return HttpResponse(data, content_type="application/json")
 
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+@csrf_exempt
+def facilitator_account_set_up(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        email = data.get("email")
+        password = data.get("password")
+        token = data.get("token")
+
+        if not password or password == "":
+            return JsonResponse({"message": "Must provide password"}, status=400)
+
+        if not token or token == "":
+            return JsonResponse({"message": "Must provide token"}, status=400)
+
+        if not email or email == "":
+            return JsonResponse({"message": "Must provide email"}, status=400)
+
+        try:
+            validate_email(email)
+        except:
+            return JsonResponse({"message": "Invalid email"}, status=400)
+
+        AccountSetUp.objects.filter(expiration__lt=timezone.now()).delete()
+
+        try:
+            setup = AccountSetUp.objects.get(token=token)
+            username = setup.username
+            setup.delete()
+
+            user = User.objects.get(username=username)
+            user.set_password(password)
+            user.email = email
+            user.save()
+        except:
+            return JsonResponse({"message": "Invalid set up token"}, status=409)
+
+        return JsonResponse({"message": "success"})
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+@csrf_exempt
+def login_facilitator(request):
+    user = request.user
+
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        username = data.get("username")
+        password = data.get("password")
+
+        if username is None or len(username) == 0:
+            return JsonResponse({"message": "Must provide username"}, status=400)
+
+        if password is None or len(password) == 0:
+            return JsonResponse({"message": "Must provide password"}, status=400)
+
+        user = authenticate(username=username, password=password)
+
+        if user is None:
+            return JsonResponse({"message": "Invalid credentials"}, status=400)
+
+        login(request, user)
+
+        return HttpResponse(
+            serializers.serialize_facilitator(user.facilitator),
+            content_type="application/json",
+        )
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+
+def create_facilitator_account(department_name):
+    # create username (first 9 letters of provided name + 4 random numbers)
+    normalized_string = unicodedata.normalize("NFKD", department_name)
+    ascii_string = normalized_string.encode("ascii", "ignore").decode("ascii")
+    cleaned_string = re.sub(r"[^a-zA-Z]", "", ascii_string)
+
+    digits = string.digits
+
+    username = cleaned_string[:9].lower()
+
+    for i in range(4):
+        username += secrets.choice(digits)
+
+    user = User(username=username, first_name=department_name)
+    alphabet = string.ascii_letters + string.digits
+    password = "".join(secrets.choice(alphabet) for i in range(8))
+    user.set_password(password)
+    user.save()
+
+    token_generator = PasswordResetTokenGenerator()
+    token = token_generator.make_token(user)
+    expiration = timezone.now() + timezone.timedelta(days=2)
+
+    reset = AccountSetUp(
+        username=username,
+        token=token,
+        expiration=expiration,
+    )
+    reset.save()
+
+    return (user, token, expiration)
+
+
+@csrf_exempt
+def register_facilitator(request):
+    user = request.user
+
+    if request.method == "PUT":
+        facilitator = Facilitator.objects.filter(user=user).first()
+        if not facilitator:
+            JsonResponse(
+                {"message": "Must be a facilitator to make this request"}, status=403
+            )
+
+        data = json.loads(request.body)
+
+        workshops = data.get("workshops")
+        facilitator_name = data.get("facilitator_name")
+
+        if not facilitator_name or facilitator_name == "":
+            return JsonResponse(
+                {"message": "Must provide facilitator name and workshop"}, status=400
+            )
+
+        if facilitator_name not in [
+            name.strip() for name in facilitator.facilitators.split(",")
+        ]:
+            return JsonResponse(
+                {
+                    "message": f"Could not find facilitator with the name '{facilitator_name}'"
+                },
+                status=404,
+            )
+
+        sessions = set()
+        for workshop in workshops:
+            if workshop:
+                workshop_obj = Workshop.objects.filter(pk=workshop).first()
+
+                if not workshop_obj:
+                    return JsonResponse(
+                        {"message": "Workshop not found"},
+                        status=404,
+                    )
+
+                if workshop_obj.pk in sessions:
+                    return JsonResponse(
+                        {
+                            "message": "Can not register for more than one workshop in a single session"
+                        },
+                        status=400,
+                    )
+
+                sessions.add(workshop_obj.session)
+
+        # clear workshops
+        FacilitatorRegistration.objects.filter(
+            facilitator_name=facilitator_name
+        ).delete()
+
+        registrations = []
+
+        for workshop in workshops:
+            if workshop:
+                registration = FacilitatorRegistration(
+                    facilitator_name=facilitator_name, workshop_id=workshop
+                )
+                registration.save()
+
+                registrations.append(registration)
+
+        data = django_serializers.serialize("json", registrations)
+        return HttpResponse(data, content_type="application/json")
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)

@@ -60,6 +60,9 @@ class Registration(models.Model):
     delegate = models.ForeignKey(Delegate, on_delete=models.CASCADE)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
+class FacilitatorRegistration(models.Model):
+    facilitator_name = models.CharField(max_length=200)
+    workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
 class FacilitatorWorkshop(models.Model):
     facilitator = models.ForeignKey(Facilitator, on_delete=models.CASCADE)
@@ -68,8 +71,17 @@ class FacilitatorWorkshop(models.Model):
     def __str__(self):
         return f"{self.facilitator} - {self.workshop}"
 
+class FacilitatorAssistant(models.Model):
+    name = models.CharField(max_length=200)
+    contact = models.CharField(max_length=100)
+    workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
 class PasswordReset(models.Model):
     email = models.EmailField()
+    token = models.CharField(max_length=100)
+    expiration = models.DateTimeField()
+
+class AccountSetUp(models.Model):
+    username = models.CharField(max_length=30)
     token = models.CharField(max_length=100)
     expiration = models.DateTimeField()

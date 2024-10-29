@@ -1,14 +1,20 @@
 import json
+import re
 import secrets
 import string
+import unicodedata
 import pandas as pd
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from registration import serializers
+from registration.facilitator.views import create_facilitator_account
 from registration.models import (
+    AccountSetUp,
     Facilitator,
+    FacilitatorRegistration,
+    FacilitatorWorkshop,
     Location,
     PasswordReset,
     Registration,
@@ -18,7 +24,6 @@ from ..management.commands.matchworkshoplocations import set_locations
 
 from django.core import serializers as django_serializers
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
@@ -162,27 +167,18 @@ def workshops_bulk(request):
         for index, row in workshop_df[workshop_df["session"].isin([1, 2])].iterrows():
             # facilitator (if does not exist)
             # department names for workshop 3 (career panels) may appear in the individual facilitator names of another workshop
-            if not User.objects.filter(email=row["email"]).exists():
-                user = User(username=row["email"], email=row["email"])
-                alphabet = string.ascii_letters + string.digits
-                password = "".join(secrets.choice(alphabet) for i in range(8))
-                user.set_password(password)
-                user.save()
+            facilitator = Facilitator.objects.filter(
+                department_name=row["department_name"]
+            ).first()
 
-                token_generator = PasswordResetTokenGenerator()
-                token = token_generator.make_token(user)
-
-                reset = PasswordReset(
-                    email=row["email"],
-                    token=token,
-                    expiration=timezone.now() + timezone.timedelta(days=2),
+            if not facilitator:
+                user, token, expiration = create_facilitator_account(
+                    row["department_name"]
                 )
-                reset.save()
-
-                reset_url = f"{env('RESET_PASSWORD_URL')}/{token}"
+                reset_url = f"{env('ACCOUNT_SET_UP_URL')}/{token}"
 
                 facilitator_account_urls.append(
-                    (row["department_name"], row["email"], reset_url)
+                    (row["department_name"], user.username, reset_url)
                 )
 
                 facilitator = Facilitator(
@@ -203,31 +199,26 @@ def workshops_bulk(request):
             )
             workshop.save()
 
+            FacilitatorWorkshop.objects.create(
+                facilitator=facilitator, workshop=workshop
+            )
+
         # session 3 (career panels)
-        created_workshops = []
         for index, row in workshop_df[workshop_df["session"] == 3].iterrows():
             # if facilitator is a facilitator already, do not create account
-            if not User.objects.filter(username=row["email"]).exists():
-                user = User(username=row["email"], email=row["email"])
-                alphabet = string.ascii_letters + string.digits
-                password = "".join(secrets.choice(alphabet) for i in range(8))
-                user.set_password(password)
-                user.save()
+            facilitator = Facilitator.objects.filter(
+                department_name=row["department_name"]
+            ).first()
 
-                token_generator = PasswordResetTokenGenerator()
-                token = token_generator.make_token(user)
-
-                reset = PasswordReset(
-                    email=row["email"],
-                    token=token,
-                    expiration=timezone.now() + timezone.timedelta(days=2),
+            if not facilitator:
+                user, token, expiration = create_facilitator_account(
+                    row["department_name"]
                 )
-                reset.save()
 
-                reset_url = f"{env('RESET_PASSWORD_URL')}/{token}"
+                reset_url = f"{env('ACCOUNT_SET_UP_URL')}/{token}"
 
                 facilitator_account_urls.append(
-                    (row["department_name"], row["email"], reset_url)
+                    (row["department_name"], user.username, reset_url)
                 )
 
                 facilitator = Facilitator(
@@ -240,7 +231,8 @@ def workshops_bulk(request):
                 facilitator.save()
 
             # if title already created ignore
-            if row["title"] not in created_workshops:
+            workshop = Workshop.objects.filter(title=row["title"]).first()
+            if not workshop:
                 panelists = workshop_df[workshop_df["title"] == row["title"]][
                     "facilitators"
                 ].tolist()
@@ -254,7 +246,9 @@ def workshops_bulk(request):
                 )
                 workshop.save()
 
-                created_workshops.append(row["title"])
+            FacilitatorWorkshop.objects.create(
+                facilitator=facilitator, workshop=workshop
+            )
 
         # set locations
         set_locations(1)
@@ -285,8 +279,11 @@ def workshop_id(request, id):
     workshop = get_object_or_404(Workshop, pk=id)
 
     if request.method == "GET":
+        include_fas = False
+        if Facilitator.objects.filter(user_id=request.user.pk):
+            include_fas = True
         return HttpResponse(
-            serializers.serialize_workshop(workshop), content_type="application/json"
+            serializers.serialize_workshop(workshop, include_fas=include_fas), content_type="application/json"
         )
     elif request.method == "PUT":
         try:
@@ -317,7 +314,12 @@ def workshop_registration(request, id):
             return JsonResponse({"message": "Workshop not found"}, status=404)
 
         registrations = Registration.objects.filter(workshop_id=id)
+        facilitator_registrations = FacilitatorRegistration.objects.filter(
+            workshop_id=id
+        )
 
-        return JsonResponse({"num_registrations": len(registrations)})
+        return JsonResponse(
+            {"num_registrations": len(registrations) + len(facilitator_registrations)}
+        )
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
