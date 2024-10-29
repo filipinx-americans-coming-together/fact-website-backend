@@ -2,6 +2,7 @@ import json
 from registration.models import (
     Delegate,
     Facilitator,
+    FacilitatorAssistant,
     FacilitatorRegistration,
     FacilitatorWorkshop,
     Registration,
@@ -11,7 +12,7 @@ from django.contrib.auth.models import User
 from django.core import serializers
 
 
-def serialize_workshop(workshop):
+def serialize_workshop(workshop, include_fas=False):
     workshop_data = serializers.serialize(
         "json", Workshop.objects.filter(pk=workshop.pk)
     )
@@ -26,6 +27,13 @@ def serialize_workshop(workshop):
         "location": json.JSONDecoder().decode(location_data),
         "registrations": len(registrations) + len(facilitator_registrations),
     }
+
+    if include_fas:
+        fa_data = serializers.serialize(
+            "json", FacilitatorAssistant.objects.filter(workshop_id=workshop.pk)
+        )
+
+        data["facilitator_assistants"] = json.JSONDecoder().decode(fa_data)
 
     return json.dumps(data)
 

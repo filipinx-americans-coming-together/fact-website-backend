@@ -71,6 +71,10 @@ class FacilitatorWorkshop(models.Model):
     def __str__(self):
         return f"{self.facilitator} - {self.workshop}"
 
+class FacilitatorAssistant(models.Model):
+    name = models.CharField(max_length=200)
+    contact = models.CharField(max_length=100)
+    workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
 class PasswordReset(models.Model):
     email = models.EmailField()

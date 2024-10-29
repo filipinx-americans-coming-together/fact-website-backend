@@ -279,8 +279,11 @@ def workshop_id(request, id):
     workshop = get_object_or_404(Workshop, pk=id)
 
     if request.method == "GET":
+        include_fas = False
+        if Facilitator.objects.filter(user_id=request.user.pk):
+            include_fas = True
         return HttpResponse(
-            serializers.serialize_workshop(workshop), content_type="application/json"
+            serializers.serialize_workshop(workshop, include_fas=include_fas), content_type="application/json"
         )
     elif request.method == "PUT":
         try:

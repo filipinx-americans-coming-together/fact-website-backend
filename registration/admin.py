@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import (
     AccountSetUp,
+    FacilitatorAssistant,
     FacilitatorRegistration,
     FacilitatorWorkshop,
     Workshop,
@@ -19,3 +20,4 @@ admin.site.register(Delegate)
 admin.site.register(Registration)
 admin.site.register(FacilitatorRegistration)
 admin.site.register(FacilitatorWorkshop)
+admin.site.register(FacilitatorAssistant)
