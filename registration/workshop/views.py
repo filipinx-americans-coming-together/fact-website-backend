@@ -13,6 +13,7 @@ from registration.facilitator.views import create_facilitator_account
 from registration.models import (
     AccountSetUp,
     Facilitator,
+    FacilitatorRegistration,
     FacilitatorWorkshop,
     Location,
     PasswordReset,
@@ -214,7 +215,7 @@ def workshops_bulk(request):
                     row["department_name"]
                 )
 
-                reset_url = f"{env('RESET_PASSWORD_URL')}/{token}"
+                reset_url = f"{env('ACCOUNT_SET_UP_URL')}/{token}"
 
                 facilitator_account_urls.append(
                     (row["department_name"], user.username, reset_url)
@@ -310,7 +311,12 @@ def workshop_registration(request, id):
             return JsonResponse({"message": "Workshop not found"}, status=404)
 
         registrations = Registration.objects.filter(workshop_id=id)
+        facilitator_registrations = FacilitatorRegistration.objects.filter(
+            workshop_id=id
+        )
 
-        return JsonResponse({"num_registrations": len(registrations)})
+        return JsonResponse(
+            {"num_registrations": len(registrations) + len(facilitator_registrations)}
+        )
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)

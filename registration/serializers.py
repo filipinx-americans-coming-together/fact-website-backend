@@ -16,10 +16,15 @@ def serialize_workshop(workshop):
         "json", Workshop.objects.filter(pk=workshop.pk)
     )
     location_data = serializers.serialize("json", [workshop.location])
+    registrations = Registration.objects.filter(workshop_id=workshop.pk)
+    facilitator_registrations = FacilitatorRegistration.objects.filter(
+        workshop_id=workshop.pk
+    )
 
     data = {
         "workshop": json.JSONDecoder().decode(workshop_data),
         "location": json.JSONDecoder().decode(location_data),
+        "registrations": len(registrations) + len(facilitator_registrations),
     }
 
     return json.dumps(data)
