@@ -18,3 +18,6 @@ class AgendaItem(models.Model):
 class RegistrationPermission(models.Model):
     label = models.CharField(max_length=200)
     value = models.BooleanField()
+
+    def __str__(self):
+        return f"{self.label} - {self.value}"

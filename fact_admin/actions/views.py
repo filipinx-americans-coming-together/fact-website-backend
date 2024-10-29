@@ -24,9 +24,9 @@ def registration_permissions(request):
 
 
 @csrf_exempt
-def registration_permission_id(request, id):
+def registration_permission_id(request, label):
     if request.method == "GET":
-        permission = RegistrationPermission.objects.filter(pk=id)
+        permission = RegistrationPermission.objects.filter(label=label)
 
         if not permission.exists():
             return JsonResponse({"message": "Permission not found"}, status=404)
@@ -41,8 +41,8 @@ def registration_permission_id(request, id):
             return JsonResponse(
                 {"message": "Must be admin to make this request"}, status=403
             )
-        
-        permission = RegistrationPermission.objects.filter(pk=id)
+
+        permission = RegistrationPermission.objects.filter(label=label)
 
         if not permission.exists():
             return JsonResponse({"message": "Permission not found"}, status=404)
@@ -50,17 +50,12 @@ def registration_permission_id(request, id):
         data = json.loads(request.body)
         value = data.get("value")
 
-        if (
-            value == None
-            or value == ""
-            or value.lower().strip() not in ["true", "false"]
-        ):
+        if value == None or type(value) != bool:
             return JsonResponse({"message": "Must provide true/false value"})
 
-        value = value.lower().strip()
-
-        permission.first().value = True if value == "true" else False
-        permission.save()
+        permission_obj = permission.first()
+        permission_obj.value = value
+        permission_obj.save()
 
         return HttpResponse(django_serializers.serialize("json", permission))
     else:

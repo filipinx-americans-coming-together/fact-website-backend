@@ -23,7 +23,7 @@ urlpatterns = [
     ),
     path("permissions/", action_views.registration_permissions, name="permissions"),
     path(
-        "permissions/<int:id>/",
+        "permissions/<str:label>/",
         action_views.registration_permission_id,
         name="permissions-id",
     ),
