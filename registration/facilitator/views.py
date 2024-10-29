@@ -303,7 +303,6 @@ def register_facilitator(request):
     user = request.user
 
     if request.method == "PUT":
-        print("put")
         facilitator = Facilitator.objects.filter(user=user).first()
         if not facilitator:
             JsonResponse(
@@ -314,7 +313,6 @@ def register_facilitator(request):
 
         workshops = data.get("workshops")
         facilitator_name = data.get("facilitator_name")
-        print("check 1")
 
         if not facilitator_name or facilitator_name == "":
             return JsonResponse(
@@ -330,7 +328,7 @@ def register_facilitator(request):
                 },
                 status=404,
             )
-        
+
         sessions = set()
         for workshop in workshops:
             if workshop:
