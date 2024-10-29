@@ -146,13 +146,13 @@ def user(request):
 
         if len(sessions) == 3:
             # clear registered workshops
-            Registration.objects.filter(user=user).delete()
+            Registration.objects.filter(delegate=user.delegate).delete()
 
             # re register
             for workshop_id in workshop_ids:
                 workshop = Workshop.objects.get(pk=workshop_id)
 
-                registration = Registration(user=user, workshop=workshop)
+                registration = Registration(delegate=user.delegate, workshop=workshop)
 
                 registration.save()
 
@@ -240,7 +240,7 @@ def user(request):
         for workshop_id in workshop_ids:
             workshop = Workshop.objects.get(pk=workshop_id)
 
-            registration = Registration(user=user, workshop=workshop)
+            registration = Registration(delegate=delegate, workshop=workshop)
             registration.save()
 
             # save workshop names for email
@@ -286,16 +286,16 @@ def login_user(request):
     if request.method == "POST":
         data = json.loads(request.body)
 
-        email = data.get("email")
+        username = data.get("username")
         password = data.get("password")
 
-        if email is None or len(email) == 0:
+        if username is None or len(username) == 0:
             return JsonResponse({"message": "Must provide email"}, status=400)
 
         if password is None or len(password) == 0:
             return JsonResponse({"message": "Must provide password"}, status=400)
 
-        user = authenticate(email=email, password=password)
+        user = authenticate(username=username, password=password)
 
         if user is None:
             return JsonResponse({"message": "Invalid credentials"}, status=400)

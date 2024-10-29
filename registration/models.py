@@ -57,7 +57,7 @@ class Delegate(models.Model):
 
 
 class Registration(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    delegate = models.ForeignKey(Delegate, on_delete=models.CASCADE)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
 
