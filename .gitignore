@@ -12,3 +12,6 @@ __pycache__
 
 # omit test email directory
 test_emails
+
+# saved spreadsheets
+*.xlsx

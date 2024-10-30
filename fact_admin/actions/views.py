@@ -1,11 +1,14 @@
 import json
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
+from django.contrib.auth.models import User
+from django.utils import timezone
+
 import pandas as pd
 
 from fact_admin.models import RegistrationFlag
-from registration.models import Delegate
+from registration.models import Delegate, Location, Registration, School, Workshop
 
 # set workshop locations
 # get summary (sheet)
@@ -82,12 +85,17 @@ def summary(request):
         )
 
         # this might only work for this year, since it uses delegates as the base
-        # registrations = Delegate.objects.filter()
+        registrations = Delegate.objects.filter(
+            date_created__gt=timezone.now() - timezone.timedelta(days=5)
+        ).values_list("date_created", flat=True)
 
         return JsonResponse(
-            json.dumps(
-                {"delegates": delegates, "schools": schools, "registrations": {}}
-            )
+            {
+                "delegates": delegates,
+                "schools": schools,
+                "registrations": list(registrations),
+            },
+            safe=False,
         )
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
@@ -112,18 +120,78 @@ def delegate_sheet(request):
         )
 
     if request.method == "GET":
-        delegates = Delegate.objects.all.values()
+        delegates = Delegate.objects.all().values()
 
-        df = pd.from_records(delegates)
+        df = pd.DataFrame.from_records(delegates)
 
         # first, last, email come from User
         # school comes from School or NewSchool
         # workshop 1, 2, 3 come from Workshop
-        for idx, row in df:
-            pass
+        for idx, row in df.iterrows():
+            user = User.objects.get(pk=row["user_id"])
+
+            df.at[idx, "first_name"] = user.first_name
+            df.at[idx, "last_name"] = user.last_name
+            df.at[idx, "email"] = user.email
+
+            if row["school_id"]:
+                df.at[idx, "school"] = School.objects.get(pk=row["school_id"])
+            if row["other_school"]:
+                df.at[idx, "school"] = row["other_school"]
+
+            registrations = Registration.objects.filter(delegate_id=row["id"])
+
+            for registration in registrations.values():
+                workshop = Workshop.objects.get(pk=registration["workshop_id"])
+
+                for i in range(1, 4):
+                    if workshop.session == i:
+                        df.at[idx, f"session_{i}"] = workshop.title
+
+        df.drop(["id", "user_id", "other_school", "school_id"], axis=1, inplace=True)
+
+        file_path = "delegates.xlsx"
+        df.to_excel(file_path, index=False)
+
+        response = FileResponse(open(file_path, "rb"))
+        response["Content-Disposition"] = f'attachment; filename="{file_path}"'
+
+        return response
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
 def location_sheet(request):
-    pass
+    """
+    Spreadsheet of workshop locations
+    - workshop title
+    - session
+    - location (building + room number)
+    """
+    if not request.user.groups.filter(name="FACTAdmin").exists():
+        return JsonResponse(
+            {"message": "Must be admin to make this request"}, status=403
+        )
+
+    if request.method == "GET":
+        workshops = Workshop.objects.all().values()
+
+        df = pd.DataFrame.from_records(workshops)
+
+        for idx, row in df.iterrows():
+            location = Location.objects.get(pk=row["location_id"])
+            df.at[idx, "location"] = f"{location.building} {location.room_num}"
+
+        df.drop(
+            ["id", "description", "facilitators", "location_id"], axis=1, inplace=True
+        )
+
+        file_path = "locations.xlsx"
+        df.to_excel(file_path, index=False)
+
+        response = FileResponse(open(file_path, "rb"))
+        response["Content-Disposition"] = f'attachment; filename="{file_path}"'
+
+        return response
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)
