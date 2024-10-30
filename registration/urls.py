@@ -32,6 +32,7 @@ urlpatterns = [
     path("logout/", user_views.logout_user),
     path("schools/", school_views.schools),
     path("schools/bulk/", school_views.schools_bulk, name="schools_bulk"),
+    path("new-schools/", school_views.new_schools),
     path("users/request-reset-password/", user_views.request_password_reset),
     path("users/reset-password/", user_views.reset_password),
 ]

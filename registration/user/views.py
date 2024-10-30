@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
 
 from registration import serializers
-from registration.models import Delegate, PasswordReset, Registration, School, Workshop
+from registration.models import Delegate, NewSchool, PasswordReset, Registration, School, Workshop
 
 import environ
 
@@ -53,6 +53,7 @@ def user(request):
             pronouns: pronouns
             year: year
             school_id: school
+            other_school_name: school name (if provided)
             workshop_1_id: id for session 1 workshop
             workshop_2_id: id for session 2 workshop
             workshop_3_id: id for session 3 workshop
@@ -83,6 +84,7 @@ def user(request):
         pronouns = data.get("pronouns")
         year = data.get("year")
         school_id = data.get("school_id")
+        other_school_name = data.get("other_school_name")
 
         workshop_1_id = data.get("workshop_1_id")
         workshop_2_id = data.get("workshop_2_id")
@@ -126,7 +128,15 @@ def user(request):
             user.delegate.year = year
 
         if school_id:
-            user.delegate.school_id = school_id
+            # check if school id exists, if not check for other school
+            # if there is an "other" school, create a new school object
+
+            if school_id.isdigit() and School.objects.filter(pk=school_id).exists():
+                user.delegate.school_id = school_id
+            elif other_school_name and len(other_school_name) > 0:
+                user.delegate.other_school = other_school_name
+
+                NewSchool.objects.create(name=other_school_name)
 
         # workshops
         sessions = []
@@ -140,9 +150,6 @@ def user(request):
                     )
 
                 sessions.append(session)
-
-        print(sessions)
-        print(workshop_ids)
 
         if len(sessions) == 3:
             # clear registered workshops
@@ -172,6 +179,7 @@ def user(request):
         pronouns = data.get("pronouns")
         year = data.get("year")
         school_id = data.get("school_id")
+        other_school_name = data.get("other_school_name")
         workshop_1_id = data.get("workshop_1_id")
         workshop_2_id = data.get("workshop_2_id")
         workshop_3_id = data.get("workshop_3_id")
@@ -194,7 +202,7 @@ def user(request):
         except:
             return JsonResponse({"message": "Invalid email"}, status=400)
 
-        if User.objects.filter(email=email).exists():
+        if User.objects.filter(username=email).exists():
             return JsonResponse({"message": "Email already in use"}, status=400)
 
         if not password or len(password) < 8:
@@ -223,15 +231,16 @@ def user(request):
         user.save()
 
         # set delegate data
-        school = None
+        delegate = Delegate(user=user, pronouns=pronouns, year=year)
 
         if school_id:
-            try:
-                school = School.objects.get(pk=school_id)
-            except:
-                school = None
+            if school_id.isdigit() and School.objects.filter(pk=school_id).exists():
+                user.delegate.school_id = school_id
+            elif other_school_name and len(other_school_name) > 0:
+                user.delegate.other_school = other_school_name
 
-        delegate = Delegate(user=user, pronouns=pronouns, year=year, school=school)
+                NewSchool.objects.create(name=other_school_name)
+
         delegate.save()
 
         workshop_details = {}
