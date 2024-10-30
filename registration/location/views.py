@@ -90,7 +90,7 @@ def location_id(request, id):
                 location.capacity = capacity
 
             if session and len(session) > 0:
-                location.room_num = session
+                location.session = session
 
             location.save()
             data = django_serializers.serialize("json", [location])
