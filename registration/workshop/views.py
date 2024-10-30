@@ -122,7 +122,6 @@ def workshops_bulk(request):
             "facilitators",
             "image_url",
             "bio",
-            "email",
         ]
 
         for i in range(len(expected_columns)):
@@ -260,7 +259,7 @@ def workshops_bulk(request):
         body = "Facilitator accounts created"
 
         for facilitator in facilitator_account_urls:
-            body += f"\nFacilitator: {facilitator[0]}, Email: {facilitator[1]}, Account Link: {facilitator[2]}"
+            body += f"\nFacilitator: {facilitator[0]}, Account Link: {facilitator[2]}"
 
         from_email = env("EMAIL_HOST_USER")
         to_email = ["fact.it@psauiuc.org"]
