@@ -4,6 +4,7 @@ from .models import (
     FacilitatorAssistant,
     FacilitatorRegistration,
     FacilitatorWorkshop,
+    NewSchool,
     Workshop,
     Location,
     Facilitator,
@@ -21,3 +22,4 @@ admin.site.register(Registration)
 admin.site.register(FacilitatorRegistration)
 admin.site.register(FacilitatorWorkshop)
 admin.site.register(FacilitatorAssistant)
+admin.site.register(NewSchool)

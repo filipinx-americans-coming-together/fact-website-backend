@@ -41,7 +41,9 @@ class School(models.Model):
 
     def __str__(self):
         return f"{self.name}"
-
+    
+class NewSchool(models.Model):
+    name = models.CharField(max_length=100)
 
 class Delegate(models.Model):
     # django user model - https://docs.djangoproject.com/en/5.0/topics/auth/default/#user-objects
@@ -51,6 +53,7 @@ class Delegate(models.Model):
     school = models.ForeignKey(
         School, default=None, null=True, on_delete=models.CASCADE
     )
+    other_school = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.last_name}, {self.user.first_name} - {self.user.email}"
