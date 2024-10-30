@@ -2,6 +2,7 @@ import json
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
+import pandas as pd
 
 from fact_admin.models import RegistrationFlag
 from registration.models import Delegate
@@ -93,7 +94,35 @@ def summary(request):
 
 
 def delegate_sheet(request):
-    pass
+    """
+    Spreadsheet of delegate info, does not include individual facilitators
+    - first_name
+    - last_name
+    - email
+    - pronouns
+    - year
+    - school
+    - workshop 1
+    - workshop 2
+    - workshop 3
+    """
+    if not request.user.groups.filter(name="FACTAdmin").exists():
+        return JsonResponse(
+            {"message": "Must be admin to make this request"}, status=403
+        )
+
+    if request.method == "GET":
+        delegates = Delegate.objects.all.values()
+
+        df = pd.from_records(delegates)
+
+        # first, last, email come from User
+        # school comes from School or NewSchool
+        # workshop 1, 2, 3 come from Workshop
+        for idx, row in df:
+            pass
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)
 
 
 def location_sheet(request):
