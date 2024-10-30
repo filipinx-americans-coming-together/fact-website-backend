@@ -15,7 +15,7 @@ class AgendaItem(models.Model):
     end_time = models.DateTimeField()
     session_num = models.IntegerField(null=True, blank=True)
 
-class RegistrationPermission(models.Model):
+class RegistrationFlag(models.Model):
     label = models.CharField(max_length=200)
     value = models.BooleanField()
 

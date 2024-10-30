@@ -3,7 +3,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 
-from fact_admin.models import RegistrationPermission
+from fact_admin.models import RegistrationFlag
 
 # set workshop locations
 # get summary (sheet)
@@ -13,10 +13,10 @@ from fact_admin.models import RegistrationPermission
 
 
 @csrf_exempt
-def registration_permissions(request):
+def registration_flags(request):
     if request.method == "GET":
         data = django_serializers.serialize(
-            "json", RegistrationPermission.objects.all()
+            "json", RegistrationFlag.objects.all()
         )
         return HttpResponse(data, content_type="application/json")
     else:
@@ -24,15 +24,15 @@ def registration_permissions(request):
 
 
 @csrf_exempt
-def registration_permission_id(request, label):
+def registration_flag_id(request, label):
     if request.method == "GET":
-        permission = RegistrationPermission.objects.filter(label=label)
+        flag = RegistrationFlag.objects.filter(label=label)
 
-        if not permission.exists():
+        if not flag.exists():
             return JsonResponse({"message": "Permission not found"}, status=404)
 
         return HttpResponse(
-            django_serializers.serialize("json", permission),
+            django_serializers.serialize("json", flag),
             content_type="application/json",
         )
     if request.method == "PUT":
@@ -42,9 +42,9 @@ def registration_permission_id(request, label):
                 {"message": "Must be admin to make this request"}, status=403
             )
 
-        permission = RegistrationPermission.objects.filter(label=label)
+        flag = RegistrationFlag.objects.filter(label=label)
 
-        if not permission.exists():
+        if not flag.exists():
             return JsonResponse({"message": "Permission not found"}, status=404)
 
         data = json.loads(request.body)
@@ -53,10 +53,10 @@ def registration_permission_id(request, label):
         if value == None or type(value) != bool:
             return JsonResponse({"message": "Must provide true/false value"})
 
-        permission_obj = permission.first()
-        permission_obj.value = value
-        permission_obj.save()
+        flag_obj = flag.first()
+        flag_obj.value = value
+        flag_obj.save()
 
-        return HttpResponse(django_serializers.serialize("json", permission))
+        return HttpResponse(django_serializers.serialize("json", flag))
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)

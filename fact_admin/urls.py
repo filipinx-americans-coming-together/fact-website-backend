@@ -21,10 +21,10 @@ urlpatterns = [
     path(
         "agenda-items/bulk/", agenda_views.agenda_items_bulk, name="agenda-items-bulk"
     ),
-    path("permissions/", action_views.registration_permissions, name="permissions"),
+    path("flags/", action_views.registration_flags, name="flags"),
     path(
-        "permissions/<str:label>/",
-        action_views.registration_permission_id,
-        name="permissions-id",
+        "flags/<str:label>/",
+        action_views.registration_flag_id,
+        name="flags-id",
     ),
 ]
