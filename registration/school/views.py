@@ -1,9 +1,10 @@
+import json
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 import pandas as pd
 
-from registration.models import School
+from registration.models import Delegate, NewSchool, School
 
 
 @csrf_exempt
@@ -20,6 +21,46 @@ def schools(request):
         )
 
         return HttpResponse(school_data, content_type="application/json")
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+
+@csrf_exempt
+def new_schools(request):
+    if request.method == "GET":
+        data = django_serializers.serialize("json", NewSchool.objects.all())
+        return HttpResponse(data, content_type="application/json")
+    elif request.method == "POST":
+        # must be admin
+        if not request.user.groups.filter(name="FACTAdmin").exists():
+            return JsonResponse(
+                {"message": "Must be admin to make this request"}, status=403
+            )
+
+        data = json.loads(request.body)
+        other_school = data.get("other_school")
+        approved_name = data.get("approved_name")
+
+        if approved_name == None or approved_name == "":
+            return JsonResponse({"message": "Must provide approved name"})
+
+        # create school object
+        school = School.objects.filter(name=approved_name)
+
+        if school:
+            school = school.first()
+        else:
+            school = School(name=approved_name)
+            school.save()
+
+        # find delegates with other school and replace
+        delegates = Delegate.objects.filter(other_school=other_school)
+        delegates.update(other_school=None, school_id=school.pk)
+
+        # remove new school object
+        NewSchool.objects.filter(name=other_school).delete()
+
+        return JsonResponse({"message": "success"}, status=200)
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
