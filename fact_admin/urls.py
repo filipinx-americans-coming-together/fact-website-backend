@@ -3,6 +3,7 @@ from django.urls import path
 from .login import views as login_views
 from .notification import views as notification_views
 from .agenda import views as agenda_views
+from .actions import views as action_views
 
 app_name = "fact_admin"
 urlpatterns = [
@@ -19,5 +20,11 @@ urlpatterns = [
     path("agenda-items/", agenda_views.agenda_items, name="agenda-items"),
     path(
         "agenda-items/bulk/", agenda_views.agenda_items_bulk, name="agenda-items-bulk"
+    ),
+    path("flags/", action_views.registration_flags, name="flags"),
+    path(
+        "flags/<str:label>/",
+        action_views.registration_flag_id,
+        name="flags-id",
     ),
 ]
