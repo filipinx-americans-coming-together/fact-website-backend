@@ -10,11 +10,12 @@ import pandas as pd
 
 # separate function to validate location data
 def validate_location_data(data):
-    required_fields = ["room_num", "building", "capacity"]
+    required_fields = ["room_num", "building", "capacity", "session"]
     missing_fields = [field for field in required_fields if not data.get(field)]
     if missing_fields:
         return False, {"message": f"Missing fields: {', '.join(missing_fields)}"}
     return True, None
+
 
 @csrf_exempt
 def location(request):
@@ -34,8 +35,11 @@ def location(request):
 
         if existing_location:
             return JsonResponse(
-                {"message": "Location already exists", "location_id": existing_location.id}, 
-                status=409
+                {
+                    "message": "Location already exists",
+                    "location_id": existing_location.id,
+                },
+                status=409,
             )
 
         # location creation
@@ -43,7 +47,8 @@ def location(request):
             location = Location.objects.create(
                 room_num=data["room_num"],
                 building=data["building"],
-                capacity=data["capacity"]
+                capacity=data["capacity"],
+                session=data["session"],
             )
             location.save()
 
@@ -70,9 +75,22 @@ def location_id(request, id):
             data = json.loads(request.body)
             location = Location.objects.get(id=id)
 
-            location.room_num = data.get("room_num", location.room_num)
-            location.building = data.get("building", location.building)
-            location.capacity = data.get("capacity", location.capacity)
+            room_num = data.get("room_num", location.room_num)
+            building = data.get("building", location.building)
+            capacity = data.get("capacity", location.capacity)
+            session = data.get("session", location.session)
+
+            if room_num and len(room_num) > 0:
+                location.room_num = room_num
+    
+            if building and len(building) > 0:
+                location.building = building
+
+            if capacity and len(capacity) > 0:
+                location.capacity = capacity
+
+            if session and len(session) > 0:
+                location.room_num = session
 
             location.save()
             data = django_serializers.serialize("json", [location])
