@@ -286,16 +286,16 @@ def login_user(request):
     if request.method == "POST":
         data = json.loads(request.body)
 
-        username = data.get("username")
+        email = data.get("email")
         password = data.get("password")
 
-        if username is None or len(username) == 0:
+        if email is None or len(email) == 0:
             return JsonResponse({"message": "Must provide email"}, status=400)
 
         if password is None or len(password) == 0:
             return JsonResponse({"message": "Must provide password"}, status=400)
 
-        user = authenticate(username=username, password=password)
+        user = authenticate(username=email, password=password)
 
         if user is None:
             return JsonResponse({"message": "Invalid credentials"}, status=400)
@@ -303,7 +303,7 @@ def login_user(request):
         login(request, user)
         
         return HttpResponse(
-            serializers.serialize_facilitator(user), content_type="application/json"
+            serializers.serialize_user(user), content_type="application/json"
         )
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
