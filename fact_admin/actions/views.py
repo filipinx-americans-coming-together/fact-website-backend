@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 
 from fact_admin.models import RegistrationFlag
+from registration.models import Delegate
 
 # set workshop locations
 # get summary (sheet)
@@ -15,9 +16,7 @@ from fact_admin.models import RegistrationFlag
 @csrf_exempt
 def registration_flags(request):
     if request.method == "GET":
-        data = django_serializers.serialize(
-            "json", RegistrationFlag.objects.all()
-        )
+        data = django_serializers.serialize("json", RegistrationFlag.objects.all())
         return HttpResponse(data, content_type="application/json")
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
@@ -60,3 +59,42 @@ def registration_flag_id(request, label):
         return HttpResponse(django_serializers.serialize("json", flag))
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+def summary(request):
+    """
+    Get event summary
+    - number of delegates
+    - number of unique schools
+    - registrations from past 5 days
+    """
+    if not request.user.groups.filter(name="FACTAdmin").exists():
+        return JsonResponse(
+            {"message": "Must be admin to make this request"}, status=403
+        )
+
+    if request.method == "GET":
+        delegates = Delegate.objects.all().count()
+        schools = (
+            Delegate.objects.values("school").distinct().count()
+            + Delegate.objects.values("other_school").distinct().count()
+        )
+
+        # this might only work for this year, since it uses delegates as the base
+        # registrations = Delegate.objects.filter()
+
+        return JsonResponse(
+            json.dumps(
+                {"delegates": delegates, "schools": schools, "registrations": {}}
+            )
+        )
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+def delegate_sheet(request):
+    pass
+
+
+def location_sheet(request):
+    pass

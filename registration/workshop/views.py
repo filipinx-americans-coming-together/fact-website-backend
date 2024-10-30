@@ -305,20 +305,3 @@ def workshop_id(request, id):
         return JsonResponse({"message": "success"}, status=200)
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
-
-
-def workshop_registration(request, id):
-    if request.method == "GET":
-        if not Workshop.objects.filter(pk=id).exists():
-            return JsonResponse({"message": "Workshop not found"}, status=404)
-
-        registrations = Registration.objects.filter(workshop_id=id)
-        facilitator_registrations = FacilitatorRegistration.objects.filter(
-            workshop_id=id
-        )
-
-        return JsonResponse(
-            {"num_registrations": len(registrations) + len(facilitator_registrations)}
-        )
-    else:
-        return JsonResponse({"message": "Method not allowed"}, status=405)
