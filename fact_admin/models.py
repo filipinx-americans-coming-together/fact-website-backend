@@ -14,3 +14,10 @@ class AgendaItem(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     session_num = models.IntegerField(null=True, blank=True)
+
+class RegistrationFlag(models.Model):
+    label = models.CharField(max_length=200)
+    value = models.BooleanField()
+
+    def __str__(self):
+        return f"{self.label} - {self.value}"
