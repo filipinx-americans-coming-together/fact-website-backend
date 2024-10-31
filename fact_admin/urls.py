@@ -27,4 +27,7 @@ urlpatterns = [
         action_views.registration_flag_id,
         name="flags-id",
     ),
+    path("sheets/delegates/", action_views.delegate_sheet, name="delegate-sheet"),
+    path("sheets/locations/", action_views.location_sheet, name="location-sheet"),
+    path("summary/", action_views.summary, name="summary")
 ]

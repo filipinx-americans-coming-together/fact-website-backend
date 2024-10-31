@@ -29,7 +29,9 @@ class Workshop(models.Model):
     title = models.CharField(max_length=100, default="")
     description = models.TextField()
     facilitators = models.JSONField(default=list)
-    location = models.OneToOneField(Location, on_delete=models.CASCADE, null=True, blank=True)
+    location = models.OneToOneField(
+        Location, on_delete=models.CASCADE, null=True, blank=True
+    )
     session = models.IntegerField(default=0)
 
     def __str__(self):
@@ -41,9 +43,11 @@ class School(models.Model):
 
     def __str__(self):
         return f"{self.name}"
-    
+
+
 class NewSchool(models.Model):
     name = models.CharField(max_length=100)
+
 
 class Delegate(models.Model):
     # django user model - https://docs.djangoproject.com/en/5.0/topics/auth/default/#user-objects
@@ -55,6 +59,8 @@ class Delegate(models.Model):
     )
     other_school = models.CharField(max_length=100, null=True, blank=True)
 
+    date_created = models.DateTimeField(auto_now_add=True)
+
     def __str__(self):
         return f"{self.user.last_name}, {self.user.first_name} - {self.user.email}"
 
@@ -63,9 +69,11 @@ class Registration(models.Model):
     delegate = models.ForeignKey(Delegate, on_delete=models.CASCADE)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
+
 class FacilitatorRegistration(models.Model):
     facilitator_name = models.CharField(max_length=200)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
+
 
 class FacilitatorWorkshop(models.Model):
     facilitator = models.ForeignKey(Facilitator, on_delete=models.CASCADE)
@@ -74,15 +82,18 @@ class FacilitatorWorkshop(models.Model):
     def __str__(self):
         return f"{self.facilitator} - {self.workshop}"
 
+
 class FacilitatorAssistant(models.Model):
     name = models.CharField(max_length=200)
     contact = models.CharField(max_length=100)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
+
 class PasswordReset(models.Model):
     email = models.EmailField()
     token = models.CharField(max_length=100)
     expiration = models.DateTimeField()
+
 
 class AccountSetUp(models.Model):
     username = models.CharField(max_length=30)
