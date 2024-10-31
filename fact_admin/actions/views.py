@@ -81,7 +81,7 @@ def summary(request):
         delegates = Delegate.objects.all().count()
         schools = (
             Delegate.objects.values("school").distinct().count()
-            + Delegate.objects.values("other_school").distinct().count()
+            # + Delegate.objects.values("other_school").distinct().count()
         )
 
         # this might only work for this year, since it uses delegates as the base
