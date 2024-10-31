@@ -122,6 +122,7 @@ def workshops_bulk(request):
             "image_url",
             "bio",
             "networking_session",
+            "position"
         ]
 
         for i in range(len(expected_columns)):
@@ -188,6 +189,10 @@ def workshops_bulk(request):
                     bio=row["bio"],
                     attending_networking_session=row["networking_session"] == 1,
                 )
+
+                if row["position"]:
+                    facilitator.position = row["position"]
+
                 facilitator.save()
 
             # workshop
@@ -228,6 +233,10 @@ def workshops_bulk(request):
                     bio=row["bio"],
                     attending_networking_session=row["networking_session"] == 1,
                 )
+
+                if row["position"]:
+                    facilitator.position = row["position"]
+                    
                 facilitator.save()
 
             # if title already created ignore

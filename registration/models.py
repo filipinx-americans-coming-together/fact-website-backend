@@ -17,6 +17,7 @@ class Facilitator(models.Model):
     fa_name = models.CharField(max_length=100, blank=True)
     fa_contact = models.CharField(max_length=100, blank=True)
     department_name = models.CharField(max_length=100)
+    position = models.CharField(null=True, blank=True)
     facilitators = models.JSONField(default=list)
     image_url = models.URLField()
     bio = models.TextField()
