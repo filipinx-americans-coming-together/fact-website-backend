@@ -259,7 +259,7 @@ def workshops_bulk(request):
         body = "Facilitator accounts created"
 
         for facilitator in facilitator_account_urls:
-            body += f"\nFacilitator: {facilitator[0]}, Account Link: {facilitator[2]}"
+            body += f"\nFacilitator: {facilitator[0]}, Username: {facilitator[1]}, Account Link: {facilitator[2]}"
 
         from_email = env("EMAIL_HOST_USER")
         to_email = ["fact.it@psauiuc.org"]
