@@ -20,6 +20,7 @@ class Facilitator(models.Model):
     facilitators = models.JSONField(default=list)
     image_url = models.URLField()
     bio = models.TextField()
+    attending_networking_session = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.department_name} - {self.fa_name}"

@@ -53,7 +53,6 @@ def workshop(request):
             workshop = Workshop(
                 title=data.get("title"),
                 description=data.get("description"),
-                facilitators=data.get("facilitators"),
                 location=location,
                 session=data.get("session"),
             )
@@ -122,6 +121,7 @@ def workshops_bulk(request):
             "facilitators",
             "image_url",
             "bio",
+            "networking_session",
         ]
 
         for i in range(len(expected_columns)):
@@ -186,6 +186,7 @@ def workshops_bulk(request):
                     facilitators=row["facilitators"],
                     image_url=row["image_url"],
                     bio=row["bio"],
+                    attending_networking_session=row["networking_session"] == 1,
                 )
                 facilitator.save()
 
@@ -193,7 +194,6 @@ def workshops_bulk(request):
             workshop = Workshop(
                 title=row["title"],
                 description=row["description"],
-                facilitators=row["facilitators"],
                 session=row["session"],
             )
             workshop.save()
@@ -226,21 +226,17 @@ def workshops_bulk(request):
                     facilitators=row["facilitators"],
                     image_url=row["image_url"],
                     bio=row["bio"],
+                    attending_networking_session=row["networking_session"] == 1,
                 )
                 facilitator.save()
 
             # if title already created ignore
             workshop = Workshop.objects.filter(title=row["title"]).first()
             if not workshop:
-                panelists = workshop_df[workshop_df["title"] == row["title"]][
-                    "facilitators"
-                ].tolist()
-
                 # workshop
                 workshop = Workshop(
                     title=row["title"],
                     description=row["description"],
-                    facilitators=json.dumps(panelists),
                     session=row["session"],
                 )
                 workshop.save()
@@ -282,7 +278,8 @@ def workshop_id(request, id):
         if Facilitator.objects.filter(user_id=request.user.pk):
             include_fas = True
         return HttpResponse(
-            serializers.serialize_workshop(workshop, include_fas=include_fas), content_type="application/json"
+            serializers.serialize_workshop(workshop, include_fas=include_fas),
+            content_type="application/json",
         )
     elif request.method == "PUT":
         try:
