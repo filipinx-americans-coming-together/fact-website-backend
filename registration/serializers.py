@@ -21,10 +21,17 @@ def serialize_workshop(workshop, include_fas=False):
     facilitator_registrations = FacilitatorRegistration.objects.filter(
         workshop_id=workshop.pk
     )
+    facilitators = FacilitatorWorkshop.objects.filter(workshop_id=workshop.pk).values(
+        "facilitator"
+    )
+    facilitator_data = serializers.serialize(
+        "json", Facilitator.objects.filter(pk__in=facilitators)
+    )
 
     data = {
         "workshop": json.JSONDecoder().decode(workshop_data),
         "location": json.JSONDecoder().decode(location_data),
+        "facilitators": json.JSONDecoder().decode(facilitator_data),
         "registrations": len(registrations) + len(facilitator_registrations),
     }
 

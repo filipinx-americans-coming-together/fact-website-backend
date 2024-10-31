@@ -20,6 +20,7 @@ class Facilitator(models.Model):
     facilitators = models.JSONField(default=list)
     image_url = models.URLField()
     bio = models.TextField()
+    attending_networking_session = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.department_name} - {self.fa_name}"
@@ -28,7 +29,6 @@ class Facilitator(models.Model):
 class Workshop(models.Model):
     title = models.CharField(max_length=100, default="")
     description = models.TextField()
-    facilitators = models.JSONField(default=list)
     location = models.OneToOneField(
         Location, on_delete=models.CASCADE, null=True, blank=True
     )
