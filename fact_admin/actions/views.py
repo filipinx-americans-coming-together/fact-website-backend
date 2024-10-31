@@ -148,7 +148,7 @@ def delegate_sheet(request):
                     if workshop.session == i:
                         df.at[idx, f"session_{i}"] = workshop.title
 
-        df.drop(["id", "user_id", "other_school", "school_id"], axis=1, inplace=True)
+        df.drop(["id", "user_id", "other_school", "school_id", "date_created"], axis=1, inplace=True)
 
         file_path = "delegates.xlsx"
         df.to_excel(file_path, index=False)
