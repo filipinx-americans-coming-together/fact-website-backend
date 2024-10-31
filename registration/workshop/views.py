@@ -195,6 +195,12 @@ def workshops_bulk(request):
 
                 facilitator.save()
 
+            elif row["networking_session"] == 1:
+                # if facilitator is already created and this row is marked as attending networking session
+                facilitator.attending_networking_session = True
+                facilitator.save()
+
+
             # workshop
             workshop = Workshop(
                 title=row["title"],
@@ -236,7 +242,12 @@ def workshops_bulk(request):
 
                 if row["position"]:
                     facilitator.position = row["position"]
-                    
+
+                facilitator.save()
+
+            elif row["networking_session"] == 1:
+                # if facilitator is already created and this row is marked as attending networking session
+                facilitator.attending_networking_session = True
                 facilitator.save()
 
             # if title already created ignore
