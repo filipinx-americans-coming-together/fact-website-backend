@@ -149,8 +149,8 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    # "http://localhost:3000",
+    # "http://127.0.0.1:3000",
     "https://fact.psauiuc.org"
 ]
 CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
