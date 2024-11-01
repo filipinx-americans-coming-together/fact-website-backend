@@ -4,7 +4,6 @@ import secrets
 
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.core.validators import validate_email
@@ -15,7 +14,6 @@ env = environ.Env()
 environ.Env.read_env()
 
 
-@csrf_exempt
 def request_verification(request):
     """
     Handle requests for verifications
@@ -33,7 +31,7 @@ def request_verification(request):
             validate_email(email)
         except:
             return JsonResponse({"message": "Invalid email"}, status=400)
-        
+
         if not email_subject or email_subject == "":
             return JsonResponse({"message": "Must include email_subject"}, status=400)
 
@@ -72,7 +70,6 @@ def request_verification(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def verify(request):
     """
     Handle attempts to verify
@@ -92,11 +89,13 @@ def verify(request):
         # remove expired codes
         PendingVerification.objects.filter(expiration__lt=timezone.now()).delete()
 
-        if not PendingVerification.objects.filter(email=email, code=code).exists():
+        verification = PendingVerification.objects.filter(email=email, code=code)
+
+        if not verification.exists():
             return JsonResponse({"message": "Email and code do not match"}, status=409)
-        
+
         # remove
-        PendingVerification.objects.filter(email=email, code=code).delete()
+        verification.delete()
 
         return JsonResponse({"message": "Email verified"})
     else:

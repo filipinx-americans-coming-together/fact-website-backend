@@ -1,6 +1,5 @@
 import json
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from registration.models import Location
 from django.core.exceptions import ValidationError
@@ -17,8 +16,7 @@ def validate_location_data(data):
     return True, None
 
 
-@csrf_exempt
-def location(request):
+def locations(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -30,7 +28,7 @@ def location(request):
             return JsonResponse(error_response, status=400)
 
         existing_location = Location.objects.filter(
-            room_num=data["room_num"], building=data["building"]
+            room_num=data["room_num"], building=data["building"], session=["session"]
         ).exists()
 
         if existing_location:
@@ -65,7 +63,6 @@ def location(request):
         return JsonResponse({"message": "Method not allowed"}, status=400)
 
 
-@csrf_exempt
 def location_id(request, id):
     if request.method == "GET":
         data = django_serializers.serialize("json", Location.objects.filter(id=id))
@@ -82,12 +79,15 @@ def location_id(request, id):
 
             if room_num and len(room_num) > 0:
                 location.room_num = room_num
-    
+
             if building and len(building) > 0:
                 location.building = building
 
-            if capacity and len(capacity) > 0:
-                location.capacity = capacity
+            if capacity:
+                if type(capacity) == str and len(capacity) > 0:
+                    location.capacity = capacity
+                elif type(capacity) == int:
+                    location.capacity = capacity
 
             if session and len(session) > 0:
                 location.session = session
@@ -106,7 +106,6 @@ def location_id(request, id):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def locations_bulk(request):
     if request.method == "POST":
         # must be admin

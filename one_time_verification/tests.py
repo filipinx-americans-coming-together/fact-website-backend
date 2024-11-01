@@ -11,7 +11,7 @@ from one_time_verification.models import PendingVerification
 class RequestPendingVerification(TestCase):
     def setUp(self):
         self.client = Client()
-        self.url = reverse("verification:request")
+        self.url = reverse("verifications:request")
 
     def test_reject_bad_data(self):
         # no email
@@ -101,7 +101,7 @@ class RequestPendingVerification(TestCase):
 class VerifyPendingVerification(TestCase):
     def setUp(self):
         self.client = Client()
-        self.url = reverse("verification:verify")
+        self.url = reverse("verifications:verify")
 
         self.email = "email@email.com"
         self.valid_code = 389024

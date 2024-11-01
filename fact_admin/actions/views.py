@@ -1,6 +1,5 @@
 import json
 from django.http import FileResponse, HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -17,7 +16,6 @@ from registration.models import Delegate, Location, Registration, School, Worksh
 # send email updates?
 
 
-@csrf_exempt
 def registration_flags(request):
     if request.method == "GET":
         data = django_serializers.serialize("json", RegistrationFlag.objects.all())
@@ -26,7 +24,6 @@ def registration_flags(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def registration_flag_id(request, label):
     if request.method == "GET":
         flag = RegistrationFlag.objects.filter(label=label)
@@ -48,13 +45,15 @@ def registration_flag_id(request, label):
         flag = RegistrationFlag.objects.filter(label=label)
 
         if not flag.exists():
-            return JsonResponse({"message": "Permission not found"}, status=404)
+            return JsonResponse({"message": "Flag not found"}, status=404)
 
         data = json.loads(request.body)
         value = data.get("value")
 
-        if value == None or type(value) != bool:
-            return JsonResponse({"message": "Must provide true/false value"})
+        if value == None or (value != True and value != False):
+            return JsonResponse(
+                {"message": "Must provide true/false value"}, status=400
+            )
 
         flag_obj = flag.first()
         flag_obj.value = value
@@ -80,7 +79,9 @@ def summary(request):
     if request.method == "GET":
         delegates = Delegate.objects.all().count()
         schools = (
-            Delegate.objects.values("school").distinct().count()
+            Delegate.objects.values("school")
+            .distinct()
+            .count()
             # + Delegate.objects.values("other_school").distinct().count()
         )
 
@@ -148,7 +149,11 @@ def delegate_sheet(request):
                     if workshop.session == i:
                         df.at[idx, f"session_{i}"] = workshop.title
 
-        df.drop(["id", "user_id", "other_school", "school_id", "date_created"], axis=1, inplace=True)
+        df.drop(
+            ["id", "user_id", "other_school", "school_id", "date_created"],
+            axis=1,
+            inplace=True,
+        )
 
         file_path = "delegates.xlsx"
         df.to_excel(file_path, index=False)

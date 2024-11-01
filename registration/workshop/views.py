@@ -1,8 +1,4 @@
 import json
-import re
-import secrets
-import string
-import unicodedata
 import pandas as pd
 
 from django.http import HttpResponse, JsonResponse
@@ -11,21 +7,14 @@ from django.shortcuts import get_object_or_404
 from registration import serializers
 from registration.facilitator.views import create_facilitator_account
 from registration.models import (
-    AccountSetUp,
     Facilitator,
-    FacilitatorRegistration,
     FacilitatorWorkshop,
     Location,
-    PasswordReset,
-    Registration,
     Workshop,
 )
 from ..management.commands.matchworkshoplocations import set_locations
 
 from django.core import serializers as django_serializers
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from django.contrib.auth.models import User
 from django.core.mail import send_mail
 
 import environ
@@ -34,8 +23,7 @@ env = environ.Env()
 environ.Env.read_env()
 
 
-def workshop(request):
-    # Note: Does not account for when attributes are missing in POST request
+def workshops(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -48,7 +36,10 @@ def workshop(request):
 
             if w.exists():
                 if w[0].session == data.get("session"):
-                    return HttpResponse("Workshop in current session already exists")
+                    return JsonResponse(
+                        {"message": "Workshop in current session already exists"},
+                        status=409,
+                    )
 
             workshop = Workshop(
                 title=data.get("title"),
@@ -70,7 +61,6 @@ def workshop(request):
         return JsonResponse({"message": "Method not allowed"}, status=400)
 
 
-@csrf_exempt
 def workshops_bulk(request):
     """
     Process many workshops via file upload
@@ -84,7 +74,7 @@ def workshops_bulk(request):
             )
 
         # must have no workshops
-        if len(Workshop.objects.all()) > 0 or len(Facilitator.objects.all()) > 0:
+        if Workshop.objects.all().count() > 0 or Facilitator.objects.all().count() > 0:
             return JsonResponse(
                 {
                     "message": "Delete existing workshops and facilitators before attempting to upload"
@@ -122,7 +112,7 @@ def workshops_bulk(request):
             "image_url",
             "bio",
             "networking_session",
-            "position"
+            "position",
         ]
 
         for i in range(len(expected_columns)):
@@ -154,7 +144,7 @@ def workshops_bulk(request):
                 workshop_count[rows["session"]].append(rows["title"])
 
         for i in range(1, 4):
-            if len(workshop_count[i]) > len(Location.objects.filter(session=i)):
+            if len(workshop_count[i]) > Location.objects.filter(session=i).count():
                 return JsonResponse(
                     {
                         "message": f"Not enough locations for given workshops in session {i}"
@@ -199,7 +189,6 @@ def workshops_bulk(request):
                 # if facilitator is already created and this row is marked as attending networking session
                 facilitator.attending_networking_session = True
                 facilitator.save()
-
 
             # workshop
             workshop = Workshop(
@@ -289,13 +278,12 @@ def workshops_bulk(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def workshop_id(request, id):
     workshop = get_object_or_404(Workshop, pk=id)
 
     if request.method == "GET":
         include_fas = False
-        if Facilitator.objects.filter(user_id=request.user.pk):
+        if hasattr(request.user, "facilitator"):
             include_fas = True
         return HttpResponse(
             serializers.serialize_workshop(workshop, include_fas=include_fas),
@@ -303,12 +291,12 @@ def workshop_id(request, id):
         )
     elif request.method == "PUT":
         try:
+            # TODO integrity checks
             data = json.loads(request.body)
             location = get_object_or_404(Location, id=data.get("location"))
 
             workshop.title = data.get("title", workshop.title)
             workshop.description = data.get("description", workshop.description)
-            workshop.facilitators = data.get("facilitators", workshop.facilitators)
             workshop.location = location
             workshop.session = data.get("session", workshop.session)
 

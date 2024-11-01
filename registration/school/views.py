@@ -1,13 +1,11 @@
 import json
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 import pandas as pd
 
 from registration.models import Delegate, NewSchool, School
 
 
-@csrf_exempt
 def schools(request):
     """
     Handle requests related to all schools
@@ -25,7 +23,6 @@ def schools(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def new_schools(request):
     if request.method == "GET":
         data = django_serializers.serialize("json", NewSchool.objects.all())
@@ -65,7 +62,6 @@ def new_schools(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def schools_bulk(request):
     if request.method == "POST":
         # must be admin
@@ -75,7 +71,7 @@ def schools_bulk(request):
             )
 
         # must have no schools
-        if len(School.objects.all()) > 0:
+        if School.objects.all().count() > 0:
             return JsonResponse(
                 {"message": "Delete existing schools before attempting to upload"},
                 status=409,

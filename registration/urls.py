@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .user import views as user_views
+from .delegate import views as delegate_views
 from .facilitator import views as facilitator_views
 from .location import views as location_views
 from .school import views as school_views
@@ -8,31 +8,40 @@ from .workshop import views as workshop_views
 
 app_name = "registration"
 urlpatterns = [
-    path("workshop/", workshop_views.workshop, name="workshop"),
-    path("workshop/<int:id>/", workshop_views.workshop_id, name="workshop_id"),
+    path("workshops/", workshop_views.workshops, name="workshop"),
+    path("workshops/<int:id>/", workshop_views.workshop_id, name="workshop_id"),
     path("workshops/bulk/", workshop_views.workshops_bulk, name="workshops_bulk"),
     path("locations/bulk/", location_views.locations_bulk, name="locations_bulk"),
-    path("location/", location_views.location, name="location"),
-    path("location/<int:id>/", location_views.location_id, name="location_id"),
-    path("facilitator/", facilitator_views.facilitator, name="facilitator"),
-    path("facilitator/login/", facilitator_views.login_facilitator, name="login"),
+    path("locations/", location_views.locations, name="location"),
+    path("locations/<int:id>/", location_views.location_id, name="location_id"),
+    path("facilitators/", facilitator_views.facilitators, name="facilitators"),
+    path("facilitators/me/", facilitator_views.me, name="facilitators_me"),
     path(
-        "facilitator/set-up/",
-        facilitator_views.facilitator_account_set_up,
-        name="facilitator_set_up",
+        "facilitators/login/",
+        facilitator_views.login_facilitator,
+        name="facilitators_login",
     ),
     path(
-        "facilitator/register/",
+        "facilitators/set-up/",
+        facilitator_views.facilitator_account_set_up,
+        name="facilitators_set_up",
+    ),
+    path(
+        "facilitators/register/",
         facilitator_views.register_facilitator,
         name="register_facilitator",
     ),
-    path("user/", user_views.user),
-    path("users/", user_views.users),
-    path("login/", user_views.login_user),
-    path("logout/", user_views.logout_user),
-    path("schools/", school_views.schools),
+    path("delegates/me/", delegate_views.delegate_me, name="delegates_me"),
+    path("delegates/", delegate_views.delegates, name="delegates"),
+    path("delegates/login/", delegate_views.login_delegate, name="delegates_login"),
+    path("schools/", school_views.schools, name="schools"),
     path("schools/bulk/", school_views.schools_bulk, name="schools_bulk"),
-    path("new-schools/", school_views.new_schools),
-    path("users/request-reset-password/", user_views.request_password_reset),
-    path("users/reset-password/", user_views.reset_password),
+    path("schools/new/", school_views.new_schools, name="schools_new"),
+    path("users/logout/", delegate_views.logout_user, name="logout"),
+    path(
+        "users/request-reset-password/",
+        delegate_views.request_password_reset,
+        name="request_password_reset",
+    ),
+    path("users/reset-password/", delegate_views.reset_password, name="reset_password"),
 ]

@@ -7,11 +7,8 @@ import pandas as pd
 from fact_admin.models import AgendaItem
 from django.core import serializers as django_serializers
 from django.utils.dateparse import parse_datetime
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 
-
-@csrf_exempt
 def agenda_items(request):
     if request.method == "GET":
         data = django_serializers.serialize(
@@ -32,6 +29,7 @@ def agenda_items(request):
         building = data.get("building")
         room_num = data.get("room_num")
         session_num = data.get("session_num")
+        address = data.get("address")
 
         if not title or not start_time or not end_time:
             return JsonResponse(
@@ -60,24 +58,22 @@ def agenda_items(request):
             room_num=room_num,
             start_time=start_time,
             end_time=end_time,
+            address=address,
         )
 
-        # note this just ignores malformed session data
-        if len(session_num) > 0 and session_num in ["1", "2", "3"]:
+        # note this just ignores (no error) malformed session data
+        if int(session_num) in [1, 2, 3]:
             new_agenda_item.session_num = int(session_num)
 
         new_agenda_item.save()
 
-        data = django_serializers.serialize(
-            "json", AgendaItem.objects.filter(pk=new_agenda_item.pk)
-        )
+        data = django_serializers.serialize("json", [new_agenda_item])
         return HttpResponse(data, content_type="application/json")
 
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def agenda_items_id(request, id):
     if request.method == "DELETE":
         # make sure user is allowed
@@ -86,10 +82,12 @@ def agenda_items_id(request, id):
                 {"message": "Must be admin to make this request"}, status=403
             )
 
-        if not AgendaItem.objects.filter(pk=id).exists():
+        agenda_item = AgendaItem.objects.filter(pk=id)
+
+        if not agenda_item.exists():
             return JsonResponse({"message": "Agenda item not found"}, status=404)
 
-        AgendaItem.objects.get(pk=id).delete()
+        agenda_item.delete()
 
         return JsonResponse({"message": "Delete success"})
 
@@ -97,7 +95,6 @@ def agenda_items_id(request, id):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def agenda_items_bulk(request):
     if request.method == "POST":
         # make sure user is allowed
@@ -107,7 +104,7 @@ def agenda_items_bulk(request):
             )
 
         # must have no agenda items
-        if len(AgendaItem.objects.all()) > 0:
+        if AgendaItem.objects.all().count() > 0:
             return JsonResponse(
                 {"message": "Delete existing agenda items before attempting to upload"},
                 status=409,
@@ -142,6 +139,7 @@ def agenda_items_bulk(request):
             "building",
             "room_num",
             "session_num",
+            "address",
         ]
 
         for i in range(len(expected_columns)):
@@ -157,15 +155,36 @@ def agenda_items_bulk(request):
                     {"message": "Start times can not be after end times"}, status=400
                 )
 
+            if (
+                pd.isna(agenda_df.at[idx, "title"])
+                or pd.isna(agenda_df.at[idx, "date"])
+                or pd.isna(agenda_df.at[idx, "start_time"])
+                or pd.isnull(agenda_df.at[idx, "title"])
+                or pd.isnull(agenda_df.at[idx, "date"])
+                or pd.isnull(agenda_df.at[idx, "start_time"])
+            ):
+                return JsonResponse(
+                    {"message": "Title, date, and start time can not be empty"},
+                    status=400,
+                )
+
         timezone = pytz.timezone("America/Chicago")
 
         for idx, row in agenda_df.iterrows():
+            start_time = row["start_time"]
+            if isinstance(row["start_time"], pd.Timestamp):
+                start_time = row["start_time"].time()
+
+            end_time = row["end_time"]
+            if isinstance(row["end_time"], pd.Timestamp):
+                end_time = row["end_time"].time()
+
             start_datetime = timezone.localize(
-                datetime.datetime.combine(row["date"], row["start_time"])
+                datetime.datetime.combine(row["date"], start_time)
             )
 
             end_datetime = timezone.localize(
-                datetime.datetime.combine(row["date"], row["end_time"])
+                datetime.datetime.combine(row["date"], end_time)
             )
 
             new_agenda_item = AgendaItem(
@@ -174,6 +193,7 @@ def agenda_items_bulk(request):
                 room_num=row["room_num"],
                 start_time=start_datetime,
                 end_time=end_datetime,
+                address=row["address"],
             )
 
             # note this just ignores malformed session data
