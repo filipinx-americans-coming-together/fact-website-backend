@@ -23,7 +23,7 @@ from registration.models import (
 
 
 @csrf_exempt
-def facilitator(request):
+def facilitators(request):
     """
     Handle requests related to facilitator user
 
@@ -44,16 +44,7 @@ def facilitator(request):
 
     user = request.user
 
-    if request.method == "GET":
-        if not user.is_authenticated or not hasattr(user, "facilitator"):
-            return JsonResponse({"message": "No facilitator logged in"}, status=403)
-
-        return HttpResponse(
-            serializers.serialize_facilitator(user.facilitator),
-            content_type="application/json",
-        )
-
-    elif request.method == "PUT":
+    if request.method == "PUT":
         if not user.is_authenticated or not hasattr(user, "facilitator"):
             return JsonResponse({"message": "No facilitator logged in"}, status=403)
 
@@ -191,7 +182,21 @@ def facilitator(request):
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
 
+@csrf_exempt
+def me(request):
+    user = request.user
 
+    if request.method == "GET":
+        if not user.is_authenticated or not hasattr(user, "facilitator"):
+            return JsonResponse({"message": "No facilitator logged in"}, status=403)
+
+        return HttpResponse(
+            serializers.serialize_facilitator(user.facilitator),
+            content_type="application/json",
+        )
+    else:
+        return JsonResponse({"message": "Method not allowed"}, 405)
+    
 @csrf_exempt
 def facilitator_account_set_up(request):
     if request.method == "POST":

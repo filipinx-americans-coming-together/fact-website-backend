@@ -18,49 +18,9 @@ import environ
 env = environ.Env()
 environ.Env.read_env()
 
-
+    
 @csrf_exempt
-def users(request):
-    """
-    Handle requests related to all users
-
-    GET - get all users
-    """
-
-    if request.method == "GET":
-        user_data = django_serializers.serialize(
-            "json", User.objects.filter(is_superuser=False)
-        )
-
-        return HttpResponse(user_data, content_type="application/json")
-    else:
-        return HttpResponse(status=405)
-
-
-@csrf_exempt
-def user(request):
-    """
-    Handle requests related to user
-
-    GET - get logged in user
-    PUT - update logged in user
-    POST - create user
-        {
-            f_name: first name
-            l_name: last name
-            email: email (will act as username)
-            password: password
-            pronouns: pronouns
-            year: year
-            school_id: school
-            other_school_name: school name (if provided)
-            workshop_1_id: id for session 1 workshop
-            workshop_2_id: id for session 2 workshop
-            workshop_3_id: id for session 3 workshop
-        }
-    DELETE - delete logged in user
-    """
-
+def delegate_me(request):
     user = request.user
 
     if request.method == "GET":
@@ -169,7 +129,42 @@ def user(request):
         return HttpResponse(
             serializers.serialize_user(user), content_type="application/json"
         )
-    elif request.method == "POST":
+    elif request.method == "DELETE":
+        if not user.is_authenticated:
+            return JsonResponse({"message": "No user logged in"}, status=403)
+
+        data = serializers.serialize_user(user)
+
+        user.delete()
+        user.save()
+
+        return HttpResponse(data, content_type="application/json")
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+    
+@csrf_exempt
+def delegates(request):
+    """
+    Handle requests related to delegates
+
+    POST - create user
+        {
+            f_name: first name
+            l_name: last name
+            email: email (will act as username)
+            password: password
+            pronouns: pronouns
+            year: year
+            school_id: school
+            other_school_name: school name (if provided)
+            workshop_1_id: id for session 1 workshop
+            workshop_2_id: id for session 2 workshop
+            workshop_3_id: id for session 3 workshop
+        }
+    """
+    
+    if request.method == "POST":
         data = json.loads(request.body)
 
         f_name = data.get("f_name")
@@ -274,22 +269,12 @@ def user(request):
         return HttpResponse(
             serializers.serialize_user(user), content_type="application/json"
         )
-    elif request.method == "DELETE":
-        if not user.is_authenticated:
-            return JsonResponse({"message": "No user logged in"}, status=403)
-
-        data = serializers.serialize_user(user)
-
-        user.delete()
-        user.save()
-
-        return HttpResponse(data, content_type="application/json")
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 @csrf_exempt
-def login_user(request):
+def login_delegate(request):
     user = request.user
 
     if request.method == "POST":

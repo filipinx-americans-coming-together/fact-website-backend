@@ -34,8 +34,7 @@ env = environ.Env()
 environ.Env.read_env()
 
 
-def workshop(request):
-    # Note: Does not account for when attributes are missing in POST request
+def workshops(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)

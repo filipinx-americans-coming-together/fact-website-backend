@@ -47,7 +47,7 @@ def login_admin(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 @csrf_exempt
-def user(request):
+def me(request):
     if request.method == "GET":
         user = request.user
 

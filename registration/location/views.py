@@ -18,7 +18,7 @@ def validate_location_data(data):
 
 
 @csrf_exempt
-def location(request):
+def locations(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
