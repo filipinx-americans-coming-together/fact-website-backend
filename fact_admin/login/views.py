@@ -4,14 +4,13 @@ from django.http import HttpResponse, JsonResponse
 from django.core import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
-from django.views.decorators.csrf import csrf_exempt
 
 
-@csrf_exempt
 def login_admin(request):
     """
     Login for admin accounts
     """
+
     if request.method == "POST":
         user = request.user
 
@@ -48,7 +47,6 @@ def login_admin(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def me(request):
     if request.method == "GET":
         user = request.user

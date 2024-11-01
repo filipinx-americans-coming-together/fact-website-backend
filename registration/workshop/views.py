@@ -15,7 +15,6 @@ from registration.models import (
 from ..management.commands.matchworkshoplocations import set_locations
 
 from django.core import serializers as django_serializers
-from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 
 import environ
@@ -62,7 +61,6 @@ def workshops(request):
         return JsonResponse({"message": "Method not allowed"}, status=400)
 
 
-@csrf_exempt
 def workshops_bulk(request):
     """
     Process many workshops via file upload
@@ -280,7 +278,6 @@ def workshops_bulk(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def workshop_id(request, id):
     workshop = get_object_or_404(Workshop, pk=id)
 

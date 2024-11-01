@@ -1,6 +1,5 @@
 import json
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.core.validators import validate_email
@@ -28,7 +27,6 @@ env = environ.Env()
 environ.Env.read_env()
 
 
-@csrf_exempt
 def delegate_me(request):
     user = request.user
 
@@ -163,7 +161,6 @@ def delegate_me(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def delegates(request):
     """
     Handle requests related to delegates
@@ -321,7 +318,6 @@ def delegates(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def login_delegate(request):
     user = request.user
 
@@ -351,7 +347,6 @@ def login_delegate(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def logout_user(request):
     user = request.user
     if request.method == "POST":
@@ -365,7 +360,6 @@ def logout_user(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def request_password_reset(request):
     if request.method == "POST":
         data = json.loads(request.body)
@@ -414,7 +408,6 @@ def request_password_reset(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def reset_password(request):
     if request.method == "POST":
         data = json.loads(request.body)

@@ -14,13 +14,26 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
 
-app_name = 'registration'
+
+def get_csrf(request):
+    response = JsonResponse({"message": "CSRF cookie set"})
+    response["X-CSRFToken"] = get_token(request)
+    return response
+
+app_name = "registration"
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('registration/', include('registration.urls')),
-    path('fact-admin/', include('fact_admin.urls')),
-    path('verification/', include('one_time_verification.urls')),
+    path("admin/", admin.site.urls),
+    path("registration/", include("registration.urls")),
+    path("fact-admin/", include("fact_admin.urls")),
+    path("verifications/", include("one_time_verification.urls")),
+    path("csrf/", get_csrf),
 ]
+
+

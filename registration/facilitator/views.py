@@ -4,7 +4,6 @@ import secrets
 import string
 import unicodedata
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.core.validators import validate_email
@@ -23,7 +22,6 @@ from registration.models import (
 )
 
 
-@csrf_exempt
 def facilitators(request):
     """
     Handle requests related to facilitator user
@@ -180,7 +178,6 @@ def facilitators(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def me(request):
     user = request.user
 
@@ -196,7 +193,6 @@ def me(request):
         return JsonResponse({"message": "Method not allowed"}, 405)
 
 
-@csrf_exempt
 def facilitator_account_set_up(request):
     if request.method == "POST":
         data = json.loads(request.body)
@@ -245,7 +241,6 @@ def facilitator_account_set_up(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def login_facilitator(request):
     user = request.user
 
@@ -314,7 +309,6 @@ def create_facilitator_account(department_name):
     return (user, token, expiration)
 
 
-@csrf_exempt
 def register_facilitator(request):
     user = request.user
 

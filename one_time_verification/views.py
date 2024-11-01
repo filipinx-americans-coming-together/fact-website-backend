@@ -4,7 +4,6 @@ import secrets
 
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.core.validators import validate_email
@@ -15,7 +14,6 @@ env = environ.Env()
 environ.Env.read_env()
 
 
-@csrf_exempt
 def request_verification(request):
     """
     Handle requests for verifications
@@ -72,7 +70,6 @@ def request_verification(request):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def verify(request):
     """
     Handle attempts to verify

@@ -2,12 +2,10 @@ import json
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.core import serializers
-from django.views.decorators.csrf import csrf_exempt
 
 from fact_admin.models import Notification
 
 
-@csrf_exempt
 def notification_id(request, id):
     if request.method == "DELETE":
         user = request.user
@@ -30,7 +28,6 @@ def notification_id(request, id):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def notifications(request):
     if request.method == "GET":
         # get objects that are not expired

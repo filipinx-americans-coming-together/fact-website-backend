@@ -1,6 +1,5 @@
 import json
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from registration.models import Location
 from django.core.exceptions import ValidationError
@@ -17,7 +16,6 @@ def validate_location_data(data):
     return True, None
 
 
-@csrf_exempt
 def locations(request):
     if request.method == "POST":
         try:
@@ -65,7 +63,6 @@ def locations(request):
         return JsonResponse({"message": "Method not allowed"}, status=400)
 
 
-@csrf_exempt
 def location_id(request, id):
     if request.method == "GET":
         data = django_serializers.serialize("json", Location.objects.filter(id=id))
@@ -109,7 +106,6 @@ def location_id(request, id):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
-@csrf_exempt
 def locations_bulk(request):
     if request.method == "POST":
         # must be admin

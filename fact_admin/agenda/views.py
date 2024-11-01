@@ -7,11 +7,8 @@ import pandas as pd
 from fact_admin.models import AgendaItem
 from django.core import serializers as django_serializers
 from django.utils.dateparse import parse_datetime
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 
-
-@csrf_exempt
 def agenda_items(request):
     if request.method == "GET":
         data = django_serializers.serialize(
@@ -77,7 +74,6 @@ def agenda_items(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def agenda_items_id(request, id):
     if request.method == "DELETE":
         # make sure user is allowed
@@ -85,7 +81,7 @@ def agenda_items_id(request, id):
             return JsonResponse(
                 {"message": "Must be admin to make this request"}, status=403
             )
-        
+
         agenda_item = AgendaItem.objects.filter(pk=id)
 
         if not agenda_item.exists():
@@ -99,7 +95,6 @@ def agenda_items_id(request, id):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def agenda_items_bulk(request):
     if request.method == "POST":
         # make sure user is allowed
