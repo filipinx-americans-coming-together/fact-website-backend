@@ -32,6 +32,7 @@ def agenda_items(request):
         building = data.get("building")
         room_num = data.get("room_num")
         session_num = data.get("session_num")
+        address = data.get("address")
 
         if not title or not start_time or not end_time:
             return JsonResponse(
@@ -60,10 +61,11 @@ def agenda_items(request):
             room_num=room_num,
             start_time=start_time,
             end_time=end_time,
+            address=address,
         )
 
-        # note this just ignores malformed session data
-        if len(session_num) > 0 and session_num in ["1", "2", "3"]:
+        # note this just ignores (no error) malformed session data
+        if int(session_num) in [1, 2, 3]:
             new_agenda_item.session_num = int(session_num)
 
         new_agenda_item.save()
@@ -142,6 +144,7 @@ def agenda_items_bulk(request):
             "building",
             "room_num",
             "session_num",
+            "address"
         ]
 
         for i in range(len(expected_columns)):
@@ -157,15 +160,37 @@ def agenda_items_bulk(request):
                     {"message": "Start times can not be after end times"}, status=400
                 )
 
+            if (
+                pd.isna(agenda_df.at[idx, "title"])
+                or pd.isna(agenda_df.at[idx, "date"])
+                or pd.isna(agenda_df.at[idx, "start_time"])
+                or pd.isnull(agenda_df.at[idx, "title"])
+                or pd.isnull(agenda_df.at[idx, "date"])
+                or pd.isnull(agenda_df.at[idx, "start_time"])
+            ):
+                return JsonResponse(
+                    {
+                        "message": "Title, date, and start time can not be empty"
+                    }, status=400
+                )
+
         timezone = pytz.timezone("America/Chicago")
 
         for idx, row in agenda_df.iterrows():
+            start_time = row["start_time"]
+            if isinstance(row["start_time"], pd.Timestamp):
+                start_time = row["start_time"].time()
+
+            end_time = row["end_time"]
+            if isinstance(row["end_time"], pd.Timestamp):
+                end_time = row["end_time"].time()
+
             start_datetime = timezone.localize(
-                datetime.datetime.combine(row["date"], row["start_time"])
+                datetime.datetime.combine(row["date"], start_time)
             )
 
             end_datetime = timezone.localize(
-                datetime.datetime.combine(row["date"], row["end_time"])
+                datetime.datetime.combine(row["date"], end_time)
             )
 
             new_agenda_item = AgendaItem(
@@ -174,6 +199,7 @@ def agenda_items_bulk(request):
                 room_num=row["room_num"],
                 start_time=start_datetime,
                 end_time=end_datetime,
+                address=row["address"]
             )
 
             # note this just ignores malformed session data

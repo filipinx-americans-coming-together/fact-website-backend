@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from fact_admin.models import Notification
 
+
 @csrf_exempt
 def notification_id(request, id):
     if request.method == "DELETE":
@@ -28,13 +29,12 @@ def notification_id(request, id):
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
+
 @csrf_exempt
 def notifications(request):
     if request.method == "GET":
         # get objects that are not expired
-        notifications = Notification.objects.filter(
-            expiration__gt=timezone.now()
-        )
+        notifications = Notification.objects.filter(expiration__gt=timezone.now())
 
         return HttpResponse(
             serializers.serialize("json", notifications),
@@ -48,6 +48,9 @@ def notifications(request):
             return JsonResponse(
                 {"message": "Must be admin to make this request"}, status=403
             )
+        
+        # remove expired notifications
+        Notification.objects.filter(expiration__lte=timezone.now()).delete()
 
         # get data
         data = json.loads(request.body)
@@ -57,15 +60,22 @@ def notifications(request):
 
         # check data
         if not message or len(message) < 10:
-            JsonResponse({"message": "Enter a valid message"}, status=400)
+            return JsonResponse({"message": "Enter a valid message"}, status=400)
+
+        if Notification.objects.filter(message=message, expiration__gte=timezone.now()):
+            return JsonResponse(
+                {"message": "Notification with this message already exists"}, status=409
+            )
 
         if not expiration:
-            JsonResponse({"message": "Please provide expiration date/time"}, status=400)
+            return JsonResponse(
+                {"message": "Please provide expiration date/time"}, status=400
+            )
 
         try:
             expiration = timezone.datetime.fromisoformat(expiration)
         except:
-            JsonResponse(
+            return JsonResponse(
                 {"message": "Expiration could not be converted to valid date/time"},
                 status=400,
             )
@@ -73,9 +83,6 @@ def notifications(request):
         # create object
         notification = Notification(message=message, expiration=expiration)
         notification.save()
-
-        # remove expired notifications
-        Notification.objects.filter(expiration__lte=timezone.now()).delete()
 
         return HttpResponse(
             serializers.serialize(

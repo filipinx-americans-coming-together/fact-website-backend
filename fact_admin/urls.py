@@ -8,14 +8,16 @@ from .actions import views as action_views
 app_name = "fact_admin"
 urlpatterns = [
     path("login/", login_views.login_admin, name="login_admin"),
-    path("me/", login_views.user, name="admin_user"),
+    path("me/", login_views.me, name="admin_user"),
     path(
-        "notification/<int:id>/",
+        "notifications/<int:id>/",
         notification_views.notification_id,
-        name="delete-notification",
+        name="notifications_id",
     ),
     path("notifications/", notification_views.notifications, name="notifications"),
-    path("agenda-items/<int:id>/", agenda_views.agenda_items_id, name="agenda_items_id"),
+    path(
+        "agenda-items/<int:id>/", agenda_views.agenda_items_id, name="agenda_items_id"
+    ),
     path("agenda-items/", agenda_views.agenda_items, name="agenda_items"),
     path(
         "agenda-items/bulk/", agenda_views.agenda_items_bulk, name="agenda_items_bulk"
@@ -28,5 +30,5 @@ urlpatterns = [
     ),
     path("sheets/delegates/", action_views.delegate_sheet, name="delegate_sheet"),
     path("sheets/locations/", action_views.location_sheet, name="location_sheet"),
-    path("summary/", action_views.summary, name="summary")
+    path("summary/", action_views.summary, name="summary"),
 ]

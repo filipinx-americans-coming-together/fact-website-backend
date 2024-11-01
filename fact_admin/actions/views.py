@@ -48,13 +48,13 @@ def registration_flag_id(request, label):
         flag = RegistrationFlag.objects.filter(label=label)
 
         if not flag.exists():
-            return JsonResponse({"message": "Permission not found"}, status=404)
+            return JsonResponse({"message": "Flag not found"}, status=404)
 
         data = json.loads(request.body)
         value = data.get("value")
 
-        if value == None or type(value) != bool:
-            return JsonResponse({"message": "Must provide true/false value"})
+        if value == None or (value != True and value != False):
+            return JsonResponse({"message": "Must provide true/false value"}, status=400)
 
         flag_obj = flag.first()
         flag_obj.value = value
