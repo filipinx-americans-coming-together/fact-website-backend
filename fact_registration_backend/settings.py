@@ -143,7 +143,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # allow external origins (TODO Modify for production)
 CSRF_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = True
+
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
 
