@@ -146,7 +146,10 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
-CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
+CSRF_TRUSTED_ORIGINS = [
+    # "http://localhost:3000",
+    "https://fact.psauiuc.org"
+]
 
 CORS_ALLOWED_ORIGINS = [
     # "http://localhost:3000",
