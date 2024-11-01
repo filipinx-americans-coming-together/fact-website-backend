@@ -75,7 +75,7 @@ def schools_bulk(request):
             )
 
         # must have no schools
-        if len(School.objects.all()) > 0:
+        if School.objects.all().count() > 0:
             return JsonResponse(
                 {"message": "Delete existing schools before attempting to upload"},
                 status=409,

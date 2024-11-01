@@ -30,7 +30,7 @@ def locations(request):
             return JsonResponse(error_response, status=400)
 
         existing_location = Location.objects.filter(
-            room_num=data["room_num"], building=data["building"]
+            room_num=data["room_num"], building=data["building"], session=["session"]
         ).exists()
 
         if existing_location:
@@ -82,7 +82,7 @@ def location_id(request, id):
 
             if room_num and len(room_num) > 0:
                 location.room_num = room_num
-    
+
             if building and len(building) > 0:
                 location.building = building
 

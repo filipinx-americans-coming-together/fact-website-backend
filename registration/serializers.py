@@ -13,9 +13,7 @@ from django.core import serializers
 
 
 def serialize_workshop(workshop, include_fas=False):
-    workshop_data = serializers.serialize(
-        "json", Workshop.objects.filter(pk=workshop.pk)
-    )
+    workshop_data = serializers.serialize("json", [workshop])
     location_data = serializers.serialize("json", [workshop.location])
     registrations = Registration.objects.filter(workshop_id=workshop.pk)
     facilitator_registrations = FacilitatorRegistration.objects.filter(
@@ -32,7 +30,7 @@ def serialize_workshop(workshop, include_fas=False):
         "workshop": json.JSONDecoder().decode(workshop_data),
         "location": json.JSONDecoder().decode(location_data),
         "facilitators": json.JSONDecoder().decode(facilitator_data),
-        "registrations": len(registrations) + len(facilitator_registrations),
+        "registrations": registrations.count() + facilitator_registrations.count(),
     }
 
     if include_fas:
@@ -46,10 +44,8 @@ def serialize_workshop(workshop, include_fas=False):
 
 
 def serialize_user(user):
-    delegate_data = serializers.serialize(
-        "json", Delegate.objects.filter(pk=user.delegate.pk)
-    )
-    user_data = serializers.serialize("json", User.objects.filter(pk=user.pk))
+    delegate_data = serializers.serialize("json", [user.delegate])
+    user_data = serializers.serialize("json", [user])
     registration_data = serializers.serialize(
         "json", Registration.objects.filter(delegate=user.delegate)
     )
@@ -65,9 +61,7 @@ def serialize_user(user):
 
 def serialize_facilitator(facilitator):
     facilitator_data = serializers.serialize("json", [facilitator])
-    user_data = serializers.serialize(
-        "json", User.objects.filter(pk=facilitator.user.pk)
-    )
+    user_data = serializers.serialize("json", [facilitator.user.pk])
     workshops = serializers.serialize(
         "json", FacilitatorWorkshop.objects.filter(facilitator=facilitator)
     )

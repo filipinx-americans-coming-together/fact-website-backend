@@ -48,7 +48,7 @@ def notifications(request):
             return JsonResponse(
                 {"message": "Must be admin to make this request"}, status=403
             )
-        
+
         # remove expired notifications
         Notification.objects.filter(expiration__lte=timezone.now()).delete()
 
@@ -85,9 +85,7 @@ def notifications(request):
         notification.save()
 
         return HttpResponse(
-            serializers.serialize(
-                "json", Notification.objects.filter(id=notification.pk)
-            ),
+            serializers.serialize("json", [notification]),
             content_type="application/json",
         )
     else:

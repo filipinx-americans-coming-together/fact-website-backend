@@ -11,6 +11,7 @@ from django.core.validators import validate_email
 from django.contrib.auth import login, authenticate
 from django.utils import timezone
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.contrib.auth.password_validation import validate_password
 
 from registration import serializers
 from registration.models import (
@@ -33,10 +34,8 @@ def facilitators(request):
         {
             f_name: first name
             l_name: last name
-            email: email (will act as username)
+            email: email
             password: password
-            fa_name: fa_name
-            fa_contact: fa_contact
             workshops: list of workshop ids facilitated by the user
         }
     DELETE - delete logged in facilitator user
@@ -54,8 +53,7 @@ def facilitators(request):
         l_name = data.get("l_name")
         email = data.get("email")
         password = data.get("password")
-        fa_name = data.get("fa_name")
-        fa_contact = data.get("fa_contact")
+        new_password = data.get("new_password")
         workshops = data.get("workshops", [])
 
         # update user data
@@ -76,21 +74,22 @@ def facilitators(request):
 
             user.email = email
 
-        if password and len(password) > 0:
-            if len(password) < 8:
+        if new_password:
+            if not authenticate(username=user.username, password=password):
                 return JsonResponse(
-                    {"message": "Password must be at least 8 characters"}, status=400
+                    {"message": "Old password does not match"}, status=409
                 )
-            user.set_password(password)
+
+            try:
+                validate_password(new_password)
+                user.set_password(new_password)
+            except:
+                return JsonResponse(
+                    {"message": "Password is not strong enough"}, status=400
+                )
 
         # update facilitator data
         facilitator = user.facilitator
-
-        if fa_name and len(fa_name) > 0:
-            facilitator.fa_name = fa_name
-
-        if fa_contact and len(fa_contact) > 0:
-            facilitator.fa_contact = fa_contact
 
         facilitator.save()
 
@@ -117,8 +116,6 @@ def facilitators(request):
         l_name = data.get("l_name")
         email = data.get("email")
         password = data.get("password")
-        fa_name = data.get("fa_name")
-        fa_contact = data.get("fa_contact")
         workshops = data.get("workshops", [])
 
         # validate data
@@ -140,9 +137,11 @@ def facilitators(request):
         if User.objects.filter(email=email).exists():
             return JsonResponse({"message": "Email already in use"}, status=400)
 
-        if not password or len(password) < 8:
+        try:
+            validate_password(password)
+        except:
             return JsonResponse(
-                {"message": "Password must be at least 8 characters"}, status=400
+                {"message": "Password is not strong enough"}, status=400
             )
 
         # set user data
@@ -151,7 +150,7 @@ def facilitators(request):
         user.save()
 
         # set facilitator data
-        facilitator = Facilitator(user=user, fa_name=fa_name, fa_contact=fa_contact)
+        facilitator = Facilitator(user=user)
         facilitator.save()
 
         # set facilitator workshops
@@ -173,14 +172,13 @@ def facilitators(request):
         if not user.is_authenticated or not hasattr(user, "facilitator"):
             return JsonResponse({"message": "No facilitator logged in"}, status=403)
 
-        data = serializers.serialize_facilitator(user.facilitator)
-
         user.delete()
 
-        return HttpResponse(data, content_type="application/json")
+        return JsonResponse({"message": "success"})
 
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
+
 
 @csrf_exempt
 def me(request):
@@ -196,7 +194,8 @@ def me(request):
         )
     else:
         return JsonResponse({"message": "Method not allowed"}, 405)
-    
+
+
 @csrf_exempt
 def facilitator_account_set_up(request):
     if request.method == "POST":
@@ -219,6 +218,13 @@ def facilitator_account_set_up(request):
             validate_email(email)
         except:
             return JsonResponse({"message": "Invalid email"}, status=400)
+
+        try:
+            validate_password(password)
+        except:
+            return JsonResponse(
+                {"message": "Password is not strong enough"}, status=400
+            )
 
         AccountSetUp.objects.filter(expiration__lt=timezone.now()).delete()
 
@@ -260,6 +266,11 @@ def login_facilitator(request):
         if user is None:
             return JsonResponse({"message": "Invalid credentials"}, status=400)
 
+        if not hasattr(user, "facilitator"):
+            return JsonResponse(
+                {"message": "No associated facilitator account"}, status=403
+            )
+
         login(request, user)
 
         return HttpResponse(
@@ -291,7 +302,7 @@ def create_facilitator_account(department_name):
 
     token_generator = PasswordResetTokenGenerator()
     token = token_generator.make_token(user)
-    expiration = timezone.now() + timezone.timedelta(days=2)
+    expiration = timezone.now() + timezone.timedelta(days=7)
 
     reset = AccountSetUp(
         username=username,

@@ -33,15 +33,15 @@ def delegate_me(request):
     user = request.user
 
     if request.method == "GET":
-        if not user.is_authenticated:
-            return HttpResponse("No user logged in", status=403)
+        if not user.is_authenticated or not hasattr(user, "delegate"):
+            return JsonResponse({"message": "No delegate logged in"}, status=403)
 
         return HttpResponse(
             serializers.serialize_user(user), content_type="application/json"
         )
     elif request.method == "PUT":
-        if not user.is_authenticated:
-            return HttpResponse("No user logged in", status=403)
+        if not user.is_authenticated or not hasattr(user, "delegate"):
+            return JsonResponse({"message": "No delegate logged in"}, status=403)
 
         data = json.loads(request.body)
 
@@ -73,22 +73,26 @@ def delegate_me(request):
             try:
                 validate_email(email)
             except:
-                return HttpResponse("Invalid email", status=400)
+                return JsonResponse({"message": "Invalid email"}, status=400)
 
             if email != user.email and User.objects.filter(email=email).exists():
-                return HttpResponse("Email already in use", status=400)
+                return JsonResponse({"message": "Email already in use"}, status=400)
 
             user.email = email
 
-        if new_password and len(new_password) > 0:
+        if new_password:
             if not authenticate(username=user.username, password=password):
                 return JsonResponse(
                     {"message": "Old password does not match"}, status=409
                 )
 
-            if validate_password(new_password) < 0:
-                return HttpResponse("Password is not strong enough", status=400)
-            user.set_password(password)
+            try:
+                validate_password(new_password)
+                user.set_password(new_password)
+            except:
+                return JsonResponse(
+                    {"message": "Password is not strong enough"}, status=400
+                )
 
         if pronouns and len(pronouns) > 0:
             user.delegate.pronouns = pronouns
@@ -114,8 +118,11 @@ def delegate_me(request):
                 session = Workshop.objects.get(pk=workshop_id).session
 
                 if session in sessions:
-                    return HttpResponse(
-                        "Can not register for multiple workshops in a single session"
+                    return JsonResponse(
+                        {
+                            "message": "Can not register for multiple workshops in a single session"
+                        },
+                        status=400,
                     )
 
                 sessions.append(session)
@@ -131,6 +138,10 @@ def delegate_me(request):
                 registration = Registration(delegate=user.delegate, workshop=workshop)
 
                 registration.save()
+        else:
+            return JsonResponse(
+                {"message": "Must register for all three sessions"}, status=400
+            )
 
         user.save()
         user.delegate.save()
@@ -263,7 +274,10 @@ def delegates(request):
         delegate = Delegate(user=user, pronouns=pronouns, year=year)
 
         if school_id:
-            if str(school_id).isdigit() and School.objects.filter(pk=school_id).exists():
+            if (
+                str(school_id).isdigit()
+                and School.objects.filter(pk=school_id).exists()
+            ):
                 user.delegate.school_id = school_id
         elif other_school_name and len(other_school_name) > 0:
             user.delegate.other_school = other_school_name
@@ -361,6 +375,7 @@ def request_password_reset(request):
         if not email or email == "":
             return JsonResponse({"message": "Must provide email"}, status=400)
 
+        # return "success" even if no connected user exists
         try:
             user = User.objects.get(email=email)
         except:
@@ -369,8 +384,6 @@ def request_password_reset(request):
                     "message": "If email is connected to account, reset password link has been sent"
                 }
             )
-
-        user = User.objects.get(email=email)
 
         token_generator = PasswordResetTokenGenerator()
         token = token_generator.make_token(user)
@@ -392,7 +405,6 @@ def request_password_reset(request):
 
         send_mail(subject, body, from_email, to_email)
 
-        # always send "success" message even if user doesn't exist
         return JsonResponse(
             {
                 "message": "If email is connected to account, reset password link has been sent"

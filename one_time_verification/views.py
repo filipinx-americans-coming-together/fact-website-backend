@@ -33,7 +33,7 @@ def request_verification(request):
             validate_email(email)
         except:
             return JsonResponse({"message": "Invalid email"}, status=400)
-        
+
         if not email_subject or email_subject == "":
             return JsonResponse({"message": "Must include email_subject"}, status=400)
 
@@ -92,11 +92,13 @@ def verify(request):
         # remove expired codes
         PendingVerification.objects.filter(expiration__lt=timezone.now()).delete()
 
-        if not PendingVerification.objects.filter(email=email, code=code).exists():
+        verification = PendingVerification.objects.filter(email=email, code=code)
+
+        if not verification.exists():
             return JsonResponse({"message": "Email and code do not match"}, status=409)
-        
+
         # remove
-        PendingVerification.objects.filter(email=email, code=code).delete()
+        verification.delete()
 
         return JsonResponse({"message": "Email verified"})
     else:

@@ -70,9 +70,7 @@ def agenda_items(request):
 
         new_agenda_item.save()
 
-        data = django_serializers.serialize(
-            "json", AgendaItem.objects.filter(pk=new_agenda_item.pk)
-        )
+        data = django_serializers.serialize("json", [new_agenda_item])
         return HttpResponse(data, content_type="application/json")
 
     else:
@@ -87,11 +85,13 @@ def agenda_items_id(request, id):
             return JsonResponse(
                 {"message": "Must be admin to make this request"}, status=403
             )
+        
+        agenda_item = AgendaItem.objects.filter(pk=id)
 
-        if not AgendaItem.objects.filter(pk=id).exists():
+        if not agenda_item.exists():
             return JsonResponse({"message": "Agenda item not found"}, status=404)
 
-        AgendaItem.objects.get(pk=id).delete()
+        agenda_item.delete()
 
         return JsonResponse({"message": "Delete success"})
 
@@ -109,7 +109,7 @@ def agenda_items_bulk(request):
             )
 
         # must have no agenda items
-        if len(AgendaItem.objects.all()) > 0:
+        if AgendaItem.objects.all().count() > 0:
             return JsonResponse(
                 {"message": "Delete existing agenda items before attempting to upload"},
                 status=409,
@@ -144,7 +144,7 @@ def agenda_items_bulk(request):
             "building",
             "room_num",
             "session_num",
-            "address"
+            "address",
         ]
 
         for i in range(len(expected_columns)):
@@ -169,9 +169,8 @@ def agenda_items_bulk(request):
                 or pd.isnull(agenda_df.at[idx, "start_time"])
             ):
                 return JsonResponse(
-                    {
-                        "message": "Title, date, and start time can not be empty"
-                    }, status=400
+                    {"message": "Title, date, and start time can not be empty"},
+                    status=400,
                 )
 
         timezone = pytz.timezone("America/Chicago")
@@ -199,7 +198,7 @@ def agenda_items_bulk(request):
                 room_num=row["room_num"],
                 start_time=start_datetime,
                 end_time=end_datetime,
-                address=row["address"]
+                address=row["address"],
             )
 
             # note this just ignores malformed session data
