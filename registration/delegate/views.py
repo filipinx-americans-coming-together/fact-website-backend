@@ -11,14 +11,23 @@ from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
 
 from registration import serializers
-from registration.models import Delegate, NewSchool, PasswordReset, Registration, School, Workshop
+from registration.models import (
+    Delegate,
+    FacilitatorRegistration,
+    Location,
+    NewSchool,
+    PasswordReset,
+    Registration,
+    School,
+    Workshop,
+)
 
 import environ
 
 env = environ.Env()
 environ.Env.read_env()
 
-    
+
 @csrf_exempt
 def delegate_me(request):
     user = request.user
@@ -142,7 +151,7 @@ def delegate_me(request):
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
-    
+
 @csrf_exempt
 def delegates(request):
     """
@@ -163,7 +172,7 @@ def delegates(request):
             workshop_3_id: id for session 3 workshop
         }
     """
-    
+
     if request.method == "POST":
         data = json.loads(request.body)
 
@@ -179,9 +188,14 @@ def delegates(request):
         workshop_2_id = data.get("workshop_2_id")
         workshop_3_id = data.get("workshop_3_id")
 
-        workshop_ids = [workshop_1_id, workshop_2_id, workshop_3_id]
+        workshop_ids = [int(workshop_1_id), int(workshop_2_id), int(workshop_3_id)]
 
         # validate data
+        if None in workshop_ids:
+            return JsonResponse(
+                {"message": "Must register for all three sessions"}, status=400
+            )
+
         if not f_name or len(f_name) < 1:
             return JsonResponse(
                 {"message": "First name must be at least one character"}, status=400
@@ -197,18 +211,25 @@ def delegates(request):
         except:
             return JsonResponse({"message": "Invalid email"}, status=400)
 
-        if User.objects.filter(username=email).exists():
-            return JsonResponse({"message": "Email already in use"}, status=400)
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({"message": "Email already in use"}, status=409)
 
-        if not password or len(password) < 8:
-            return JsonResponse(
-                {"message": "Password must be at least 8 characters"}, status=400
-            )
+        try:
+            validate_password(password)
+        except:
+            return JsonResponse({"message": "Password is too weak"}, status=400)
 
         sessions = []
         for workshop_id in workshop_ids:
-            session = Workshop.objects.get(pk=workshop_id).session
+            try:
+                workshop = Workshop.objects.get(pk=int(workshop_id))
+                session = workshop.session
+            except:
+                return JsonResponse(
+                    {"message": "Requested workshop not found"}, status=404
+                )
 
+            # session
             if session in sessions:
                 return JsonResponse(
                     {
@@ -218,6 +239,19 @@ def delegates(request):
                 )
 
             sessions.append(session)
+
+            # workshop cap
+            registrations = (
+                Registration.objects.filter(workshop_id=workshop_id).count()
+                + FacilitatorRegistration.objects.filter(
+                    workshop_id=workshop_id
+                ).count()
+            )
+
+            if registrations >= workshop.location.capacity:
+                return JsonResponse(
+                    {"message": f"{workshop.title} is full"}, status=409
+                )
 
         # set user data
         user = User(username=email, email=email, first_name=f_name, last_name=l_name)
@@ -229,12 +263,12 @@ def delegates(request):
         delegate = Delegate(user=user, pronouns=pronouns, year=year)
 
         if school_id:
-            if school_id.isdigit() and School.objects.filter(pk=school_id).exists():
+            if str(school_id).isdigit() and School.objects.filter(pk=school_id).exists():
                 user.delegate.school_id = school_id
-            elif other_school_name and len(other_school_name) > 0:
-                user.delegate.other_school = other_school_name
+        elif other_school_name and len(other_school_name) > 0:
+            user.delegate.other_school = other_school_name
 
-                NewSchool.objects.create(name=other_school_name)
+            NewSchool.objects.create(name=other_school_name)
 
         delegate.save()
 
@@ -295,7 +329,7 @@ def login_delegate(request):
             return JsonResponse({"message": "Invalid credentials"}, status=400)
 
         login(request, user)
-        
+
         return HttpResponse(
             serializers.serialize_user(user), content_type="application/json"
         )

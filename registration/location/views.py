@@ -86,8 +86,11 @@ def location_id(request, id):
             if building and len(building) > 0:
                 location.building = building
 
-            if capacity and len(capacity) > 0:
-                location.capacity = capacity
+            if capacity:
+                if type(capacity) == str and len(capacity) > 0:
+                    location.capacity = capacity
+                elif type(capacity) == int:
+                    location.capacity = capacity
 
             if session and len(session) > 0:
                 location.session = session

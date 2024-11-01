@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .user import views as user_views
+from .delegate import views as delegate_views
 from .facilitator import views as facilitator_views
 from .location import views as location_views
 from .school import views as school_views
@@ -31,17 +31,17 @@ urlpatterns = [
         facilitator_views.register_facilitator,
         name="register_facilitator",
     ),
-    path("delegates/me/", user_views.delegate_me, name="delegates_me"),
-    path("delegates/", user_views.delegates, name="delegates"),
-    path("delegates/login/", user_views.login_delegate, name="delegates_login"),
-    path("logout/", user_views.logout_user, name="logout"),
+    path("delegates/me/", delegate_views.delegate_me, name="delegates_me"),
+    path("delegates/", delegate_views.delegates, name="delegates"),
+    path("delegates/login/", delegate_views.login_delegate, name="delegates_login"),
     path("schools/", school_views.schools, name="schools"),
     path("schools/bulk/", school_views.schools_bulk, name="schools_bulk"),
     path("schools/new/", school_views.new_schools, name="schools_new"),
+    path("users/logout/", delegate_views.logout_user, name="logout"),
     path(
         "users/request-reset-password/",
-        user_views.request_password_reset,
+        delegate_views.request_password_reset,
         name="request_password_reset",
     ),
-    path("users/reset-password/", user_views.reset_password, name="reset_password"),
+    path("users/reset-password/", delegate_views.reset_password, name="reset_password"),
 ]

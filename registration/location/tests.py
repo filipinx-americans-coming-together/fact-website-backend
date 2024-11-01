@@ -37,7 +37,7 @@ class LocationAPITestCase(TestCase):
             "capacity": 30
         }
         response = self.client.post(self.location_url, json.dumps(data), content_type="application/json")
-        self.assertContains(response, "Location already exists", status_code=200)
+        self.assertContains(response, "Location already exists", status_code=409)
 
     def test_get_location(self):
         response = self.client.get(self.location_url)
