@@ -1,4 +1,5 @@
 import json
+import os
 import pandas as pd
 
 from django.http import HttpResponse, JsonResponse
@@ -16,6 +17,7 @@ from ..management.commands.matchworkshoplocations import set_locations
 
 from django.core import serializers as django_serializers
 from django.core.mail import send_mail
+from django.views.decorators.csrf import csrf_exempt
 
 import environ
 
@@ -60,7 +62,7 @@ def workshops(request):
     else:
         return JsonResponse({"message": "Method not allowed"}, status=400)
 
-
+@csrf_exempt
 def workshops_bulk(request):
     """
     Process many workshops via file upload
@@ -113,6 +115,8 @@ def workshops_bulk(request):
             "bio",
             "networking_session",
             "position",
+            "preferred_cap",
+            "moveable_seats",
         ]
 
         for i in range(len(expected_columns)):
@@ -121,7 +125,11 @@ def workshops_bulk(request):
                     {"message": f"Missing column {expected_columns[i]}"}, status=400
                 )
 
-        if workshop_df.isnull().values.any():
+        if (
+            workshop_df.drop(["position", "preferred_cap"], axis=1)
+            .isnull()
+            .values.any()
+        ):
             return JsonResponse(
                 {"message": "Missing values - make sure there are no empty cells"},
                 status=400,
@@ -165,7 +173,7 @@ def workshops_bulk(request):
                 user, token, expiration = create_facilitator_account(
                     row["department_name"]
                 )
-                reset_url = f"{env('ACCOUNT_SET_UP_URL')}/{token}"
+                reset_url = f"{os.getenv('ACCOUNT_SET_UP_URL')}/{token}"
 
                 facilitator_account_urls.append(
                     (row["department_name"], user.username, reset_url)
@@ -195,7 +203,15 @@ def workshops_bulk(request):
                 title=row["title"],
                 description=row["description"],
                 session=row["session"],
+                moveable_seats=row["moveable_seats"],
             )
+
+            try:
+                cap = int(row["preferred_cap"])
+                workshop.preferred_cap = cap
+            except:
+                pass
+
             workshop.save()
 
             FacilitatorWorkshop.objects.create(
@@ -247,7 +263,15 @@ def workshops_bulk(request):
                     title=row["title"],
                     description=row["description"],
                     session=row["session"],
+                    moveable_seats=row["moveable_seats"],
                 )
+
+                try:
+                    cap = int(row["preferred_cap"])
+                    workshop.preferred_cap = cap
+                except:
+                    pass
+
                 workshop.save()
 
             FacilitatorWorkshop.objects.create(

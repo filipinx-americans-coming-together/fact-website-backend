@@ -8,6 +8,8 @@ from fact_admin.models import AgendaItem
 from django.core import serializers as django_serializers
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+
 
 def agenda_items(request):
     if request.method == "GET":
@@ -95,6 +97,7 @@ def agenda_items_id(request, id):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
+@csrf_exempt
 def agenda_items_bulk(request):
     if request.method == "POST":
         # make sure user is allowed

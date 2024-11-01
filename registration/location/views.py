@@ -4,6 +4,8 @@ from django.http import HttpResponse, JsonResponse
 from registration.models import Location
 from django.core.exceptions import ValidationError
 from django.core import serializers as django_serializers
+from django.views.decorators.csrf import csrf_exempt
+
 import pandas as pd
 
 
@@ -106,6 +108,7 @@ def location_id(request, id):
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
+@csrf_exempt
 def locations_bulk(request):
     if request.method == "POST":
         # must be admin
@@ -142,7 +145,13 @@ def locations_bulk(request):
         if len(columns_set) != len(location_df.columns):
             return JsonResponse({"message": "Duplicate column names"}, status=400)
 
-        expected_columns = ["building", "room", "capacity", "session"]
+        expected_columns = [
+            "building",
+            "room",
+            "capacity",
+            "session",
+            "moveable_seats",
+        ]
 
         for i in range(len(expected_columns)):
             if expected_columns[i] not in columns_set:
@@ -172,6 +181,7 @@ def locations_bulk(request):
                 room_num=row["room"],
                 capacity=row["capacity"],
                 session=row["session"],
+                moveable_seats=row["moveable_seats"] == 1,
             )
             location.save()
 

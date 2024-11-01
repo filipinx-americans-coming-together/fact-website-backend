@@ -7,6 +7,7 @@ class Location(models.Model):
     building = models.CharField(max_length=50, default="")
     capacity = models.IntegerField(default=0)
     session = models.IntegerField(default=0)
+    moveable_seats = models.BooleanField()
 
     def __str__(self):
         return f"{self.room_num} - {self.building}, session {self.session}"
@@ -34,6 +35,8 @@ class Workshop(models.Model):
         Location, on_delete=models.CASCADE, null=True, blank=True
     )
     session = models.IntegerField(default=0)
+    preferred_cap = models.IntegerField(null=True, blank=True)
+    moveable_seats = models.BooleanField()
 
     def __str__(self):
         return f"{self.title} - session {self.session}"
