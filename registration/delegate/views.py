@@ -305,7 +305,7 @@ def delegates(request):
         for session in workshop_details:
             registration_details += f"Session {session}: {workshop_details[session]}\n"
 
-        body = f"Thank you for registering for FACT 2024!\n\nYou have registered for the following workshops\n\n{registration_details}\nTo update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard"
+        body = f"Thank you for registering for FACT 2024!\n\nYou have registered for the following workshops\n\n{registration_details}\nFor day-of updates, please text @fact2024 to 81010 to sign up for reminders using the Remind app! To update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard"
         from_email = env("EMAIL_HOST_USER")
         to_email = [email]
 
