@@ -61,7 +61,7 @@ def serialize_user(user):
 
 def serialize_facilitator(facilitator):
     facilitator_data = serializers.serialize("json", [facilitator])
-    user_data = serializers.serialize("json", [facilitator.user.pk])
+    user_data = serializers.serialize("json", [facilitator.user])
     workshops = serializers.serialize(
         "json", FacilitatorWorkshop.objects.filter(facilitator=facilitator)
     )
