@@ -52,7 +52,7 @@ class Command(BaseCommand):
             all_data["pronouns"].append(row["pronouns"])
             all_data["year"].append(row["year"])
 
-            if pandas.isna(row["school_id"]):
+            if not pandas.isna(row["school_id"]):
                 all_data["school"].append(schools_df.loc[row["school_id"], "name"])
             elif row["other_school"]:
                 all_data["school"].append(row["other_school"])
