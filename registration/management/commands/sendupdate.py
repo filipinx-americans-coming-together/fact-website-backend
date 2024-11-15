@@ -29,15 +29,21 @@ class Command(BaseCommand):
         # create data frames
         delegates = Delegate.objects.all().values()
         delegate_df = pandas.DataFrame(data=delegates)
-        delegate_df.set_index("id", inplace=True)
+
+        if len(delegate_df) > 0:
+            delegate_df.set_index("id", inplace=True)
 
         users = User.objects.all().values()
         user_df = pandas.DataFrame(data=users)
-        user_df.set_index("id", inplace=True)
+
+        if len(user_df) > 0:
+            user_df.set_index("id", inplace=True)
 
         schools = School.objects.all().values()
         schools_df = pandas.DataFrame(data=schools)
-        schools_df.set_index("id", inplace=True)
+
+        if len(schools_df) > 0:
+            schools_df.set_index("id", inplace=True)
 
         for idx, row in delegate_df.iterrows():
             user_id = row["user_id"]
@@ -45,7 +51,14 @@ class Command(BaseCommand):
             all_data["last_name"].append(user_df.loc[user_id, "last_name"])
             all_data["pronouns"].append(row["pronouns"])
             all_data["year"].append(row["year"])
-            all_data["school"].append(schools_df.loc[row["school_id"], "name"])
+
+            if pandas.isna(row["school_id"]):
+                all_data["school"].append(schools_df.loc[row["school_id"], "name"])
+            elif row["other_school"]:
+                all_data["school"].append(row["other_school"])
+            else:
+                all_data["school"].append("")
+
             all_data["email"].append(user_df.loc[user_id, "email"])
 
             registrations = Registration.objects.filter(delegate_id=idx).values()
