@@ -1,74 +1,234 @@
 import os
-import pandas
+import pandas as pd
 import environ
 
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
 from django.core.mail import EmailMessage
 
-from registration.models import Delegate, Location, Registration, School, Workshop
+from registration.models import (
+    Delegate,
+    FacilitatorWorkshop,
+    Location,
+    Registration,
+    School,
+    Workshop,
+)
 
 env = environ.Env()
 environ.Env.read_env()
 
 
-def set_locations(session_num):
-    # get/sort workshops
-    workshops = Workshop.objects.filter(session=session_num).values()
-    workshop_df = pandas.DataFrame(data=workshops)
+def set_locations(self):
+    # set all workshop locations as "unassigned"
+    location_assignments = pd.DataFrame(columns=["workshop", "location"])
+    location_assignments["workshop"] = [value["pk"] for value in Workshop.objects.all().values("pk")]
+
+    # for session 1 and 2
+    for i in range(1, 3):
+        # all workshops/locations ordered (asc) by caps and registrations
+        locations = pd.DataFrame(
+            Location.objects.filter(session=i).order_by("capacity").values()
+        )
+
+        workshops = pd.DataFrame(data=Workshop.objects.filter(session=i).values())
+
+        registrations = []
+        facilitators = []
+
+        for idx, row in workshops.iterrows():
+            registrations.append(
+                len(Registration.objects.filter(workshop_id=row["id"]))
+            )
+
+            facilitators.append(
+                FacilitatorWorkshop.objects.filter(workshop_id=row["id"])
+                .first()
+                .facilitator.pk
+            )
+
+        workshops["facilitator"] = facilitators
+        workshops["registrations"] = registrations
+
+        # replace empty caps with rly big number
+        workshops["preferred_cap"] = workshops["preferred_cap"].fillna(1000)
+
+        workshops = workshops.sort_values(["registrations", "preferred_cap"])
+
+        # for each unassigned workshop, find next location that will fit the preferred cap/current registrations
+        location_idx = 0
+        moveable_locations = locations[locations["moveable_seats"] == True]
+
+        for idx, row in workshops[workshops["moveable_seats"] == True].iterrows():
+            # if the number of registrations exceeds the number of seats, move on to the next location
+            # if the location has already been assigned, move on to the next location
+            # since workshops are sorted by registrations first, every other workshop after this will have more registrations
+            while (
+                moveable_locations.iloc[location_idx]["capacity"]
+                < row["registrations"]
+                or moveable_locations.iloc[location_idx]["id"]
+                in location_assignments["location"].values
+            ):
+                location_idx += 1
+
+                if location_idx > len(moveable_locations):
+                    self.stdout.write(
+                        self.style.ERROR(
+                            f"Not enough compatible moveable seating locations for session {i}"
+                        )
+                    )
+                    return
+
+            location_assignments.loc[
+                location_assignments["workshop"] == row["id"], "location"
+            ] = moveable_locations.iloc[location_idx]["id"]
+
+            # if it is session 1 and facilitator is facilitating in session 2, assign their session to workshop to the chosen location
+            if i == 1:
+                session_2 = FacilitatorWorkshop.objects.filter(
+                    facilitator_id=row["facilitator"]
+                )
+
+                if session_2.exists():
+                    location_assignments.loc[
+                        location_assignments["workshop"]
+                        == session_2.first().workshop
+                    ] = moveable_locations.iloc[location_idx]["id"]
+
+            location_idx += 1
+
+        # for no moveable seat preference, assign to any open location (seats do not need to be taken into account)
+        location_idx = 0
+
+        for idx, row in workshops[workshops["moveable_seats"] == False].iterrows():
+            while (
+                locations.iloc[location_idx]["capacity"] < row["registrations"]
+                or locations.iloc[location_idx]["id"]
+                in location_assignments["location"].values
+            ):
+                location_idx += 1
+
+                if location_idx > len(locations):
+                    self.stdout.write(
+                        self.style.ERROR(
+                            f"Not enough compatible locations for session {i}"
+                        )
+                    )
+                    return
+
+            location_assignments.loc[
+                location_assignments["workshop"] == row["id"], "location"
+            ] = locations.iloc[location_idx]["id"]
+
+            # if it is session 1 and facilitator is facilitating in session 2, assign their session to workshop to the chosen location
+            if i == 1:
+                session_2 = FacilitatorWorkshop.objects.filter(
+                    facilitator_id=row["facilitator"]
+                )
+
+                if session_2.exists():
+                    location_assignments.loc[
+                        location_assignments["workshop"]
+                        == session_2.first().workshop
+                    ] = moveable_locations.iloc[location_idx]["id"]
+
+            location_idx += 1
+
+    # for session 3 sort by registrations (workshops), cap (locations) match one to one in desc. order
+    locations = pd.DataFrame(
+        Location.objects.filter(session=3).order_by("capacity").values()
+    )
+
+    workshops = pd.DataFrame(data=Workshop.objects.filter(session=3).values())
 
     registrations = []
-    for idx, row in workshop_df.iterrows():
-        registrations.append(len(Registration.objects.filter(workshop_id=idx)))
 
-    workshop_df["registrations"] = registrations
-    workshop_df = workshop_df.sort_values("registrations", ascending=False)
+    for idx, row in workshops.iterrows():
+        registrations.append(
+            len(Registration.objects.filter(workshop_id=row["id"]))
+        )
 
-    # get/sort locations
-    locations = Location.objects.filter(session=session_num).values()
-    location_df = pandas.DataFrame(data=locations)
-    location_df = location_df.sort_values("capacity", ascending=False)
+    workshops["registrations"] = registrations
 
-    if len(location_df) < len(workshop_df):
-        return False
+    workshops = workshops.sort_values("registrations")
 
-    # verify locations work
-    for i in range(len(workshop_df)):
-        if workshop_df.iloc[i]["registrations"] > location_df.iloc[i]["capacity"]:
-            return False
+    location_idx = 0
+    for idx, row in workshops.iterrows():
+        location_assignments.loc[
+            location_assignments["workshop"] == row["id"], "location"
+        ] = locations.iloc[location_idx]["id"]
+
+        location_idx += 1
+        if location_idx > len(locations):
+            self.stdout.write(
+                self.style.ERROR(f"Not enough compatible locations for session 3")
+            )
+            return
 
     # clear locations
-    for i in range(len(workshop_df)):
-        workshop_id = workshop_df.iloc[i]["id"]
-        workshop = Workshop.objects.get(pk=workshop_id)
+    Workshop.objects.all().update(location=None)
 
-        workshop.location = None
+    # assign locations
+    for idx, row in location_assignments.iterrows():
+        workshop = Workshop.objects.get(pk=row["workshop"])
+        workshop.location_id = row["location"]
         workshop.save()
 
-    # place locations
-    for i in range(len(workshop_df)):
-        workshop_id = workshop_df.iloc[i]["id"]
-        location_id = location_df.iloc[i]["id"]
 
-        workshop = Workshop.objects.get(pk=workshop_id)
-        location = Location.objects.get(pk=location_id)
+# def set_locations(session_num):
+#     # get/sort workshops
+#     workshops = Workshop.objects.filter(session=session_num).values()
+#     workshop_df = pd.DataFrame(data=workshops)
 
-        workshop.location = location
-        workshop.save()
+#     registrations = []
+#     for idx, row in workshop_df.iterrows():
+#         registrations.append(len(Registration.objects.filter(workshop_id=idx)))
 
-    return True
+#     workshop_df["registrations"] = registrations
+#     workshop_df = workshop_df.sort_values("registrations", ascending=False)
+
+#     # get/sort locations
+#     locations = Location.objects.filter(session=session_num).values()
+#     location_df = pd.DataFrame(data=locations)
+#     location_df = location_df.sort_values("capacity", ascending=False)
+
+#     if len(location_df) < len(workshop_df):
+#         return False
+
+#     # verify locations work
+#     for i in range(len(workshop_df)):
+#         if workshop_df.iloc[i]["registrations"] > location_df.iloc[i]["capacity"]:
+#             return False
+
+#     # clear locations
+#     for i in range(len(workshop_df)):
+#         workshop_id = workshop_df.iloc[i]["id"]
+#         workshop = Workshop.objects.get(pk=workshop_id)
+
+#         workshop.location = None
+#         workshop.save()
+
+#     # place locations
+#     for i in range(len(workshop_df)):
+#         workshop_id = workshop_df.iloc[i]["id"]
+#         location_id = location_df.iloc[i]["id"]
+
+#         workshop = Workshop.objects.get(pk=workshop_id)
+#         location = Location.objects.get(pk=location_id)
+
+#         workshop.location = location
+#         workshop.save()
+
+#     return True
 
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        successes = [False] * 3
-
-        for i in range(3):
-            successes[i] = set_locations(i + 1)
+        set_locations(self)
 
         # save file
         workshops = Workshop.objects.all().order_by("session").values()
-        workshop_df = pandas.DataFrame(data=workshops)
+        workshop_df = pd.DataFrame(data=workshops)
 
         location_data = {"building": [], "room_num": [], "capacity": []}
 
@@ -79,8 +239,8 @@ class Command(BaseCommand):
             location_data["room_num"].append(location.room_num)
             location_data["capacity"].append(location.capacity)
 
-        location_df = pandas.DataFrame(data=location_data)
-        final_df = pandas.concat([workshop_df, location_df], axis=1)
+        location_df = pd.DataFrame(data=location_data)
+        final_df = pd.concat([workshop_df, location_df], axis=1)
 
         base_path = "./registration/management/commands/data"
         os.mkdir(base_path)
