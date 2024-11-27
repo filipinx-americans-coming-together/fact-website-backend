@@ -129,32 +129,25 @@ def delegate_sheet(request):
         # school comes from School or NewSchool
         # workshop 1, 2, 3 come from Workshop
         for idx, row in df.iterrows():
-            try:
-                user = User.objects.get(pk=row["user_id"])
-                df.at[idx, "first_name"] = user.first_name
-                df.at[idx, "last_name"] = user.last_name
-                df.at[idx, "email"] = user.email
-            except User.DoesNotExist:
-                print(f"Skipping row with invalid user_id: {row['user_id']}")
-                continue
+            user = User.objects.get(pk=row["user_id"])
+
+            df.at[idx, "first_name"] = user.first_name
+            df.at[idx, "last_name"] = user.last_name
+            df.at[idx, "email"] = user.email
 
             if row["school_id"]:
-                try:
-                    df.at[idx, "school"] = School.objects.get(pk=row["school_id"]).name
-                except School.DoesNotExist:
-                    df.at[idx, "school"] = None
-            elif row["other_school"]:
+                df.at[idx, "school"] = School.objects.get(pk=row["school_id"])
+            if row["other_school"]:
                 df.at[idx, "school"] = row["other_school"]
 
             registrations = Registration.objects.filter(delegate_id=row["id"])
+
             for registration in registrations.values():
-                try:
-                    workshop = Workshop.objects.get(pk=registration["workshop_id"])
-                    for i in range(1, 4):
-                        if workshop.session == i:
-                            df.at[idx, f"session_{i}"] = workshop.title
-                except Workshop.DoesNotExist:
-                    print(f"Skipping invalid workshop for registration: {registration}")
+                workshop = Workshop.objects.get(pk=registration["workshop_id"])
+
+                for i in range(1, 4):
+                    if workshop.session == i:
+                        df.at[idx, f"session_{i}"] = workshop.title
 
         df.drop(
             ["id", "user_id", "other_school", "school_id", "date_created"],
@@ -191,13 +184,8 @@ def location_sheet(request):
         df = pd.DataFrame.from_records(workshops)
 
         for idx, row in df.iterrows():
-            try:
-                # Fetch the location using location_id
-                location = Location.objects.get(pk=row["location_id"])
-                df.at[idx, "location"] = f"{location.building} {location.room_num}"
-            except Location.DoesNotExist:
-                # Handle missing location
-                df.at[idx, "location"] = "Unknown Location"
+            location = Location.objects.get(pk=row["location_id"])
+            df.at[idx, "location"] = f"{location.building} {location.room_num}"
 
         df.drop(
             ["id", "description", "facilitators", "location_id"], axis=1, inplace=True
