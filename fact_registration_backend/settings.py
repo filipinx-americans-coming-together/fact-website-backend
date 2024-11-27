@@ -84,7 +84,7 @@ WSGI_APPLICATION = "fact_registration_backend.wsgi.application"
 
 DEVELOPMENT_MODE = os.getenv("DEVELOPMENT_MODE", "False") == "True"
 
-if DEVELOPMENT_MODE is True:
+if True:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
