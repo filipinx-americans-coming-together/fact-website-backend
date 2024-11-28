@@ -200,7 +200,9 @@ def location_sheet(request):
         )
 
     if request.method == "GET":
-        workshops = Workshop.objects.all().values()
+        workshops = Workshop.objects.all().values(
+            "id", "title", "session", "location_id", "preferred_cap", "moveable_seats"
+        )
         df = pd.DataFrame.from_records(workshops)
 
         for idx, row in df.iterrows():
@@ -215,6 +217,18 @@ def location_sheet(request):
             else:
                 print(f"Missing location_id for workshop at index {idx}.")
                 df.at[idx, "location"] = "No Location Assigned"
+
+            preferred_cap = row.get("preferred_cap")
+            if preferred_cap is not None:
+                df.at[idx, "preferred_cap"] = preferred_cap
+            else:
+                df.at[idx, "preferred_cap"] = "No Preference"
+
+            moveable_seats = row.get("moveable_seats")
+            if moveable_seats is not None:
+                df.at[idx, "moveable_seats"] = moveable_seats
+            else:
+                df.at[idx, "moveable_seats"] = False
 
         # Drop unwanted columns
         df.drop(
