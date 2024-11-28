@@ -122,46 +122,67 @@ def delegate_sheet(request):
 
     if request.method == "GET":
         delegates = Delegate.objects.all().values()
-
         df = pd.DataFrame.from_records(delegates)
 
-        # first, last, email come from User
-        # school comes from School or NewSchool
-        # workshop 1, 2, 3 come from Workshop
         for idx, row in df.iterrows():
-            user = User.objects.get(pk=row["user_id"])
+            # Handle missing user_id
+            if not pd.isna(row["user_id"]):  # Check if user_id is not NaN
+                try:
+                    user = User.objects.get(pk=row["user_id"])
+                    df.at[idx, "first_name"] = user.first_name
+                    df.at[idx, "last_name"] = user.last_name
+                    df.at[idx, "email"] = user.email
+                except User.DoesNotExist:
+                    print(f"User with ID {row['user_id']} does not exist.")
+                    df.at[idx, "first_name"] = None
+                    df.at[idx, "last_name"] = None
+                    df.at[idx, "email"] = None
+            else:
+                df.at[idx, "first_name"] = None
+                df.at[idx, "last_name"] = None
+                df.at[idx, "email"] = None
 
-            df.at[idx, "first_name"] = user.first_name
-            df.at[idx, "last_name"] = user.last_name
-            df.at[idx, "email"] = user.email
-
-            if row["school_id"]:
-                df.at[idx, "school"] = School.objects.get(pk=row["school_id"])
-            if row["other_school"]:
+            # Handle missing school_id or other_school
+            if not pd.isna(row["school_id"]):  # Check if school_id is not NaN
+                try:
+                    df.at[idx, "school"] = School.objects.get(pk=row["school_id"]).name
+                except School.DoesNotExist:
+                    df.at[idx, "school"] = None
+            elif row.get("other_school"):  # Fallback to other_school if available
                 df.at[idx, "school"] = row["other_school"]
+            else:
+                df.at[idx, "school"] = None
 
+            # Handle workshop registrations
             registrations = Registration.objects.filter(delegate_id=row["id"])
-
             for registration in registrations.values():
-                workshop = Workshop.objects.get(pk=registration["workshop_id"])
+                if not pd.isna(registration["workshop_id"]):  # Check workshop_id
+                    try:
+                        workshop = Workshop.objects.get(pk=registration["workshop_id"])
+                        for i in range(1, 4):
+                            if workshop.session == i:
+                                df.at[idx, f"session_{i}"] = workshop.title
+                    except Workshop.DoesNotExist:
+                        print(f"Workshop with ID {registration['workshop_id']} does not exist.")
+                else:
+                    print(f"Skipping registration with NaN workshop_id for delegate {row['id']}.")
 
-                for i in range(1, 4):
-                    if workshop.session == i:
-                        df.at[idx, f"session_{i}"] = workshop.title
-
+        # Drop unwanted columns
         df.drop(
             ["id", "user_id", "other_school", "school_id", "date_created"],
             axis=1,
             inplace=True,
         )
 
+        # Save the Excel file
         file_path = "delegates.xlsx"
         df.to_excel(file_path, index=False)
 
+        # Return the file as a response
         response = FileResponse(open(file_path, "rb"))
         response["Content-Disposition"] = f'attachment; filename="{file_path}"'
-
         return response
+
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
 
