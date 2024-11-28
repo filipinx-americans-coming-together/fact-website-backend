@@ -201,23 +201,34 @@ def location_sheet(request):
 
     if request.method == "GET":
         workshops = Workshop.objects.all().values()
-
         df = pd.DataFrame.from_records(workshops)
 
         for idx, row in df.iterrows():
-            location = Location.objects.get(pk=row["location_id"])
-            df.at[idx, "location"] = f"{location.building} {location.room_num}"
+            # Check for missing or invalid location_id
+            if not pd.isna(row.get("location_id")):  # Ensure location_id is not NaN
+                try:
+                    location = Location.objects.get(pk=row["location_id"])
+                    df.at[idx, "location"] = f"{location.building} {location.room_num}"
+                except Location.DoesNotExist:
+                    print(f"Location with ID {row['location_id']} does not exist.")
+                    df.at[idx, "location"] = "Unknown Location"
+            else:
+                print(f"Missing location_id for workshop at index {idx}.")
+                df.at[idx, "location"] = "No Location Assigned"
 
+        # Drop unwanted columns
         df.drop(
             ["id", "description", "facilitators", "location_id"], axis=1, inplace=True
         )
 
+        # Save the Excel file
         file_path = "locations.xlsx"
         df.to_excel(file_path, index=False)
 
+        # Return the file as a response
         response = FileResponse(open(file_path, "rb"))
         response["Content-Disposition"] = f'attachment; filename="{file_path}"'
-
         return response
+
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
