@@ -193,6 +193,8 @@ def location_sheet(request):
     - workshop title
     - session
     - location (building + room number)
+    - preferred capacity
+    - moveable seats
     """
     if not request.user.groups.filter(name="FACTAdmin").exists():
         return JsonResponse(
@@ -200,49 +202,52 @@ def location_sheet(request):
         )
 
     if request.method == "GET":
+        # Fetch workshops with required fields
         workshops = Workshop.objects.all().values(
             "id", "title", "session", "location_id", "preferred_cap", "moveable_seats"
         )
         df = pd.DataFrame.from_records(workshops)
 
         for idx, row in df.iterrows():
-            # Check for missing or invalid location_id
-            if not pd.isna(row.get("location_id")):  # Ensure location_id is not NaN
+            # Handle location_id and resolve location details
+            location_id = row.get("location_id")
+            if location_id is not None:  # Check if location_id exists
                 try:
-                    location = Location.objects.get(pk=row["location_id"])
+                    location = Location.objects.get(pk=location_id)
                     df.at[idx, "location"] = f"{location.building} {location.room_num}"
                 except Location.DoesNotExist:
-                    print(f"Location with ID {row['location_id']} does not exist.")
+                    print(f"Location with ID {location_id} does not exist.")
                     df.at[idx, "location"] = "Unknown Location"
             else:
                 print(f"Missing location_id for workshop at index {idx}.")
                 df.at[idx, "location"] = "No Location Assigned"
 
+            # Handle preferred_cap
             preferred_cap = row.get("preferred_cap")
-            if preferred_cap is not None:
-                df.at[idx, "preferred_cap"] = preferred_cap
+            if preferred_cap is not None and not pd.isna(preferred_cap):
+                df.at[idx, "preferred_cap"] = int(preferred_cap)
             else:
                 df.at[idx, "preferred_cap"] = "No Preference"
 
+            # Handle moveable_seats
             moveable_seats = row.get("moveable_seats")
             if moveable_seats is not None:
-                df.at[idx, "moveable_seats"] = moveable_seats
+                df.at[idx, "moveable_seats"] = "Yes" if moveable_seats else "No"
             else:
-                df.at[idx, "moveable_seats"] = False
+                df.at[idx, "moveable_seats"] = "Unknown"
 
         # Drop unwanted columns
-        df.drop(
-            ["id", "description", "facilitators", "location_id"], axis=1, inplace=True
-        )
+        df.drop(["id", "location_id"], axis=1, inplace=True, errors="ignore")
 
         # Save the Excel file
         file_path = "locations.xlsx"
         df.to_excel(file_path, index=False)
 
         # Return the file as a response
-        response = FileResponse(open(file_path, "rb"))
-        response["Content-Disposition"] = f'attachment; filename="{file_path}"'
-        return response
+        with open(file_path, "rb") as f:
+            response = FileResponse(f)
+            response["Content-Disposition"] = f'attachment; filename="{file_path}"'
+            return response
 
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
