@@ -208,6 +208,10 @@ def location_sheet(request):
         )
         df = pd.DataFrame.from_records(workshops)
 
+        # Convert fields to string for Excel compatibility
+        df["preferred_cap"] = df["preferred_cap"].astype(str)
+        df["moveable_seats"] = df["moveable_seats"].astype(str)
+
         for idx, row in df.iterrows():
             # Handle location_id and resolve location details
             location_id = row.get("location_id")
@@ -225,7 +229,7 @@ def location_sheet(request):
             # Handle preferred_cap
             preferred_cap = row.get("preferred_cap")
             if preferred_cap is not None and not pd.isna(preferred_cap):
-                df.at[idx, "preferred_cap"] = int(preferred_cap)
+                df.at[idx, "preferred_cap"] = str(preferred_cap)
             else:
                 df.at[idx, "preferred_cap"] = "No Preference"
 
@@ -244,10 +248,9 @@ def location_sheet(request):
         df.to_excel(file_path, index=False)
 
         # Return the file as a response
-        with open(file_path, "rb") as f:
-            response = FileResponse(f)
-            response["Content-Disposition"] = f'attachment; filename="{file_path}"'
-            return response
+        response = FileResponse(open(file_path, "rb"))
+        response["Content-Disposition"] = f'attachment; filename="{file_path}"'
+        return response
 
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
