@@ -41,7 +41,7 @@ def facilitators(request):
 
     user = request.user
     if request.method == "GET":
-        data = django_serializers.serializers("json", Facilitator.objects.all())
+        data = django_serializers.serialize("json", Facilitator.objects.all())
         return HttpResponse(data, content_type="application/json")
 
     if request.method == "PUT":
