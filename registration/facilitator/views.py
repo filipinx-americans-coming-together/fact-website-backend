@@ -40,6 +40,9 @@ def facilitators(request):
     """
 
     user = request.user
+    if request.method == "GET":
+        data = django_serializers.serializers("json", Facilitator.objects.all())
+        return HttpResponse(data, content_type="application/json")
 
     if request.method == "PUT":
         if not user.is_authenticated or not hasattr(user, "facilitator"):
