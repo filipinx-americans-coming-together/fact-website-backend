@@ -40,8 +40,7 @@ def serialize_workshop(workshop, include_fas=False):
 
         data["facilitator_assistants"] = json.JSONDecoder().decode(fa_data)
 
-    return json.dumps(data)
-
+    return data
 
 def serialize_user(user):
     delegate_data = serializers.serialize("json", [user.delegate])

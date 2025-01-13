@@ -10,6 +10,7 @@ app_name = "registration"
 urlpatterns = [
     path("workshops/", workshop_views.workshops, name="workshop"),
     path("workshops/<int:id>/", workshop_views.workshop_id, name="workshop_id"),
+    path("workshops/all/", workshop_views.workshops_all, name="workshops_all"),
     path("workshops/bulk/", workshop_views.workshops_bulk, name="workshops_bulk"),
     path("locations/bulk/", location_views.locations_bulk, name="locations_bulk"),
     path("locations/", location_views.locations, name="location"),

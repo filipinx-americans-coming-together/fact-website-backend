@@ -51,7 +51,7 @@ def workshops(request):
             )
 
             workshop.save()
-            data = serializers.serialize_workshop(workshop)
+            data = json.dumps(serializers.serialize_workshop(workshop))
 
             return HttpResponse(data, content_type="application/json")
         except json.JSONDecodeError:
@@ -310,7 +310,7 @@ def workshop_id(request, id):
         if hasattr(request.user, "facilitator"):
             include_fas = True
         return HttpResponse(
-            serializers.serialize_workshop(workshop, include_fas=include_fas),
+            json.dumps(serializers.serialize_workshop(workshop, include_fas=include_fas)),
             content_type="application/json",
         )
     elif request.method == "PUT":
@@ -325,12 +325,21 @@ def workshop_id(request, id):
             workshop.session = data.get("session", workshop.session)
 
             workshop.save()
-            data = serializers.serialize_workshop(workshop)
+            data = json.dumps(serializers.serialize_workshop(workshop))
             return HttpResponse(data, content_type="application/json")
         except json.JSONDecodeError:
             return JsonResponse({"message": "Invalid JSON"}, status=400)
     elif request.method == "DELETE":
         workshop.delete()
         return JsonResponse({"message": "success"}, status=200)
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
+
+def workshops_all(request):
+    if request.method == "GET":
+        data = {}
+        for workshop in Workshop.objects.all():
+            data.update({workshop.pk: serializers.serialize_workshop(workshop, include_fas=False)})
+        return HttpResponse(json.dumps(data), content_type="application/json")
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
