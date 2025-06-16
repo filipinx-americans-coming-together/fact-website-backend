@@ -16,9 +16,10 @@ environ.Env.read_env()
 
 def request_verification(request):
     """
-    Handle requests for verifications
+    POST: Request email verification code
+    Required fields: email, email_subject
+    Sends 6-digit code that expires in 15 minutes
     """
-
     if request.method == "POST":
         data = json.loads(request.body)
         email = data.get("email")
@@ -72,9 +73,10 @@ def request_verification(request):
 
 def verify(request):
     """
-    Handle attempts to verify
+    POST: Verify email with code
+    Required fields: email, code
+    Returns 409 if code doesn't match
     """
-
     if request.method == "POST":
         data = json.loads(request.body)
         email = data.get("email")
