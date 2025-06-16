@@ -10,6 +10,7 @@ def login_admin(request):
     """
     POST: Admin login
     Required fields: username, password
+    Returns 400 for invalid credentials, 403 for non-admin
     """
     if request.method == "POST":
         user = request.user

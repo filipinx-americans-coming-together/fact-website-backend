@@ -9,6 +9,7 @@ from fact_admin.models import Notification
 def notification_id(request, id):
     """
     DELETE: Remove notification (admin only)
+    Returns 404 if not found, 403 for non-admin
     """
     if request.method == "DELETE":
         user = request.user
@@ -36,6 +37,7 @@ def notifications(request):
     GET: List active notifications
     POST: Create notification (admin only)
     Required fields: message (min 10 chars), expiration
+    Returns 400 for invalid data, 409 for duplicate, 403 for non-admin
     """
     if request.method == "GET":
         # get objects that are not expired
