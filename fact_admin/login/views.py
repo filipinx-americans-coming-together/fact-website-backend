@@ -8,9 +8,9 @@ from django.contrib.auth import authenticate, login
 
 def login_admin(request):
     """
-    Login for admin accounts
+    POST: Admin login
+    Required fields: username, password
     """
-
     if request.method == "POST":
         user = request.user
 
@@ -48,6 +48,10 @@ def login_admin(request):
 
 
 def me(request):
+    """
+    GET: Get current admin user info
+    Returns 403 if not authenticated or not admin
+    """
     if request.method == "GET":
         user = request.user
 

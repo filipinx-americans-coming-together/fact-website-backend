@@ -12,6 +12,11 @@ from django.views.decorators.csrf import csrf_exempt
 
 
 def agenda_items(request):
+    """
+    GET: List all agenda items
+    POST: Create new agenda item (admin only)
+    Required fields: title, start_time, end_time, building
+    """
     if request.method == "GET":
         data = django_serializers.serialize(
             "json", AgendaItem.objects.all().order_by("start_time")
@@ -77,6 +82,9 @@ def agenda_items(request):
 
 
 def agenda_items_id(request, id):
+    """
+    DELETE: Remove agenda item (admin only)
+    """
     if request.method == "DELETE":
         # make sure user is allowed
         if not request.user.groups.filter(name="FACTAdmin").exists():
@@ -99,6 +107,11 @@ def agenda_items_id(request, id):
 
 @csrf_exempt
 def agenda_items_bulk(request):
+    """
+    POST: Bulk upload agenda items from Excel (admin only)
+    Required columns: title, date, start_time, end_time, building, room_num, session_num, address
+    Note: Existing items must be deleted first
+    """
     if request.method == "POST":
         # make sure user is allowed
         if not request.user.groups.filter(name="FACTAdmin").exists():

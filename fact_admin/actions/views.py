@@ -17,6 +17,9 @@ from registration.models import Delegate, Location, Registration, School, Worksh
 
 
 def registration_flags(request):
+    """
+    GET: List all registration flags
+    """
     if request.method == "GET":
         data = django_serializers.serialize("json", RegistrationFlag.objects.all())
         return HttpResponse(data, content_type="application/json")
@@ -25,6 +28,10 @@ def registration_flags(request):
 
 
 def registration_flag_id(request, label):
+    """
+    GET: Get flag by label
+    PUT: Update flag value (admin only)
+    """
     if request.method == "GET":
         flag = RegistrationFlag.objects.filter(label=label)
 
@@ -66,10 +73,8 @@ def registration_flag_id(request, label):
 
 def summary(request):
     """
-    Get event summary
-    - number of delegates
-    - number of unique schools
-    - registrations from past 5 days
+    GET: Event stats (admin only)
+    Returns: delegate count, school count, recent registrations (past 5 days)
     """
     if not request.user.groups.filter(name="FACTAdmin").exists():
         return JsonResponse(
@@ -85,7 +90,6 @@ def summary(request):
             # + Delegate.objects.values("other_school").distinct().count()
         )
 
-        # this might only work for this year, since it uses delegates as the base
         registrations = Delegate.objects.filter(
             date_created__gt=timezone.now() - timezone.timedelta(days=5)
         ).values_list("date_created", flat=True)
@@ -104,16 +108,8 @@ def summary(request):
 
 def delegate_sheet(request):
     """
-    Spreadsheet of delegate info, does not include individual facilitators
-    - first_name
-    - last_name
-    - email
-    - pronouns
-    - year
-    - school
-    - workshop 1
-    - workshop 2
-    - workshop 3
+    GET: Export delegate info to Excel (admin only)
+    Includes: personal info, school, workshop selections
     """
     if not request.user.groups.filter(name="FACTAdmin").exists():
         return JsonResponse(
@@ -126,7 +122,7 @@ def delegate_sheet(request):
 
         for idx, row in df.iterrows():
             # Handle missing user_id
-            if not pd.isna(row["user_id"]):  # Check if user_id is not NaN
+            if not pd.isna(row["user_id"]):
                 try:
                     user = User.objects.get(pk=row["user_id"])
                     df.at[idx, "first_name"] = user.first_name
@@ -143,12 +139,12 @@ def delegate_sheet(request):
                 df.at[idx, "email"] = None
 
             # Handle missing school_id or other_school
-            if not pd.isna(row["school_id"]):  # Check if school_id is not NaN
+            if not pd.isna(row["school_id"]):
                 try:
                     df.at[idx, "school"] = School.objects.get(pk=row["school_id"]).name
                 except School.DoesNotExist:
                     df.at[idx, "school"] = None
-            elif row.get("other_school"):  # Fallback to other_school if available
+            elif row.get("other_school"):
                 df.at[idx, "school"] = row["other_school"]
             else:
                 df.at[idx, "school"] = None
@@ -156,7 +152,7 @@ def delegate_sheet(request):
             # Handle workshop registrations
             registrations = Registration.objects.filter(delegate_id=row["id"])
             for registration in registrations.values():
-                if not pd.isna(registration["workshop_id"]):  # Check workshop_id
+                if not pd.isna(registration["workshop_id"]):
                     try:
                         workshop = Workshop.objects.get(pk=registration["workshop_id"])
                         for i in range(1, 4):
@@ -189,12 +185,8 @@ def delegate_sheet(request):
 
 def location_sheet(request):
     """
-    Spreadsheet of workshop locations
-    - workshop title
-    - session
-    - location (building + room number)
-    - preferred capacity
-    - moveable seats
+    GET: Export workshop locations to Excel (admin only)
+    Includes: workshop details, location, capacity info
     """
     if not request.user.groups.filter(name="FACTAdmin").exists():
         return JsonResponse(
@@ -215,7 +207,7 @@ def location_sheet(request):
         for idx, row in df.iterrows():
             # Handle location_id and resolve location details
             location_id = row.get("location_id")
-            if location_id is not None:  # Check if location_id exists
+            if location_id is not None:
                 try:
                     location = Location.objects.get(pk=location_id)
                     df.at[idx, "location"] = f"{location.building} {location.room_num}"
@@ -251,6 +243,5 @@ def location_sheet(request):
         response = FileResponse(open(file_path, "rb"))
         response["Content-Disposition"] = f'attachment; filename="{file_path}"'
         return response
-
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)

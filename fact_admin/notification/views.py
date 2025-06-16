@@ -7,6 +7,9 @@ from fact_admin.models import Notification
 
 
 def notification_id(request, id):
+    """
+    DELETE: Remove notification (admin only)
+    """
     if request.method == "DELETE":
         user = request.user
 
@@ -29,6 +32,11 @@ def notification_id(request, id):
 
 
 def notifications(request):
+    """
+    GET: List active notifications
+    POST: Create notification (admin only)
+    Required fields: message (min 10 chars), expiration
+    """
     if request.method == "GET":
         # get objects that are not expired
         notifications = Notification.objects.filter(expiration__gt=timezone.now())
