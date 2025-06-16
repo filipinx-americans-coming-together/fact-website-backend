@@ -24,21 +24,20 @@ from registration.models import (
 
 def facilitators(request):
     """
-    Handle requests related to facilitator user
-
-    GET - get logged in facilitator user
-    PUT - update logged in facilitator user
-    POST - create facilitator user
-        {
-            f_name: first name
-            l_name: last name
-            email: email
-            password: password
-            workshops: list of workshop ids facilitated by the user
-        }
-    DELETE - delete logged in facilitator user
+    GET: List all facilitators
+    POST: Create new facilitator account
+    PUT: Update current facilitator profile
+    DELETE: Delete current facilitator account
+    Required fields for POST:
+        - f_name, l_name: First and last name
+        - email: Email (used as username)
+        - password: Account password
+        - workshops: List of workshop IDs
+    Required fields for PUT:
+        - f_name, l_name, email, password (for auth)
+        - workshops: List of workshop IDs
+    Returns 403 if not authenticated, 400 for invalid data, 409 for conflicts
     """
-
     user = request.user
     if request.method == "GET":
         data = django_serializers.serialize("json", Facilitator.objects.all())
@@ -182,6 +181,10 @@ def facilitators(request):
 
 
 def me(request):
+    """
+    GET: Get current facilitator profile
+    Returns 403 if not authenticated
+    """
     user = request.user
 
     if request.method == "GET":
@@ -197,6 +200,14 @@ def me(request):
 
 
 def facilitator_account_set_up(request):
+    """
+    POST: Complete facilitator account setup
+    Required fields:
+        - email: User email
+        - password: Account password
+        - token: Setup token
+    Returns 400 for invalid data, 409 for invalid token
+    """
     if request.method == "POST":
         data = json.loads(request.body)
 
@@ -245,6 +256,13 @@ def facilitator_account_set_up(request):
 
 
 def login_facilitator(request):
+    """
+    POST: Authenticate facilitator
+    Required fields:
+        - email: User email
+        - password: Account password
+    Returns 400 for invalid credentials, 403 for non-facilitator accounts
+    """
     user = request.user
 
     if request.method == "POST":
@@ -280,6 +298,13 @@ def login_facilitator(request):
 
 
 def create_facilitator_account(department_name):
+    """
+    Create a new facilitator account for a department.
+    Args:
+        department_name: Name of the department
+    Returns:
+        tuple: (username, token) for account setup
+    """
     # create username (first 9 letters of provided name + 4 random numbers)
     normalized_string = unicodedata.normalize("NFKD", department_name)
     ascii_string = normalized_string.encode("ascii", "ignore").decode("ascii")
@@ -313,15 +338,13 @@ def create_facilitator_account(department_name):
 
 
 def register_facilitator(request):
-    user = request.user
-
-    if request.method == "PUT":
-        facilitator = Facilitator.objects.filter(user=user).first()
-        if not facilitator:
-            JsonResponse(
-                {"message": "Must be a facilitator to make this request"}, status=403
-            )
-
+    """
+    POST: Register new facilitator account
+    Required fields:
+        - department_name: Department name
+    Returns 400 for invalid data
+    """
+    if request.method == "POST":
         data = json.loads(request.body)
 
         workshops = data.get("workshops")

@@ -26,6 +26,16 @@ environ.Env.read_env()
 
 
 def workshops(request):
+    """
+    GET: List all workshops
+    POST: Create new workshop
+    Required fields:
+        - title: Workshop name
+        - description: Workshop description
+        - session: Workshop session number (1-3)
+        - location: Location ID (optional)
+    Returns 400 for invalid data, 409 for duplicate workshop
+    """
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -62,11 +72,18 @@ def workshops(request):
     else:
         return JsonResponse({"message": "Method not allowed"}, status=400)
 
+
 @csrf_exempt
 def workshops_bulk(request):
     """
-    Process many workshops via file upload
-    Expects multipart/form data (to be able to accept files)
+    POST: Bulk upload workshops from Excel file (admin only)
+    Required file format:
+        - Excel file with columns: title, session, description, department_name,
+          facilitators, image_url, bio, networking_session, position (optional),
+          preferred_cap (optional), moveable_seats
+        - No empty cells (except optional fields)
+        - Sessions must be 1, 2, or 3
+    Returns 403 for non-admin, 409 if workshops exist, 400 for invalid data
     """
     if request.method == "POST":
         # must be admin
@@ -303,6 +320,17 @@ def workshops_bulk(request):
 
 
 def workshop_id(request, id):
+    """
+    GET: Get workshop by ID
+    PUT: Update workshop
+    DELETE: Delete workshop
+    Required fields for PUT:
+        - title: Workshop name
+        - description: Workshop description
+        - session: Workshop session number
+        - location: Location ID (optional)
+    Returns 404 if not found, 400 for invalid data
+    """
     workshop = get_object_or_404(Workshop, pk=id)
 
     if request.method == "GET":
@@ -335,7 +363,12 @@ def workshop_id(request, id):
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
+
 def workshops_all(request):
+    """
+    GET: List all workshops with facilitator details
+    Returns 405 for non-GET methods
+    """
     if request.method == "GET":
         data = {}
         for workshop in Workshop.objects.all():

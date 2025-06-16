@@ -13,6 +13,10 @@ from django.core import serializers
 
 
 def serialize_workshop(workshop, include_fas=False):
+    """
+    Serializes workshop data including location, facilitators, and registration count.
+    Optional: Include facilitator assistants.
+    """
     workshop_data = serializers.serialize("json", [workshop])
     location_data = serializers.serialize("json", [workshop.location])
     registrations = Registration.objects.filter(workshop_id=workshop.pk)
@@ -37,12 +41,15 @@ def serialize_workshop(workshop, include_fas=False):
         fa_data = serializers.serialize(
             "json", FacilitatorAssistant.objects.filter(workshop_id=workshop.pk)
         )
-
         data["facilitator_assistants"] = json.JSONDecoder().decode(fa_data)
 
     return data
 
+
 def serialize_user(user):
+    """
+    Serializes user data including delegate profile and workshop registrations.
+    """
     delegate_data = serializers.serialize("json", [user.delegate])
     user_data = serializers.serialize("json", [user])
     registration_data = serializers.serialize(
@@ -59,6 +66,9 @@ def serialize_user(user):
 
 
 def serialize_facilitator(facilitator):
+    """
+    Serializes facilitator data including profile, user account, and workshop assignments.
+    """
     facilitator_data = serializers.serialize("json", [facilitator])
     user_data = serializers.serialize("json", [facilitator.user])
     workshops = serializers.serialize(
@@ -66,7 +76,6 @@ def serialize_facilitator(facilitator):
     )
 
     registrations = FacilitatorRegistration.objects.none()
-
     for name in facilitator.facilitators.split(","):
         registrations = registrations | FacilitatorRegistration.objects.filter(
             facilitator_name=name.strip()

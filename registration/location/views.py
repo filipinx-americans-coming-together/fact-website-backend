@@ -9,8 +9,14 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 
 
-# separate function to validate location data
 def validate_location_data(data):
+    """
+    Validate location data fields.
+    Args:
+        data: Dictionary containing location data
+    Returns:
+        tuple: (is_valid, error_message)
+    """
     required_fields = ["room_num", "building", "capacity", "session"]
     missing_fields = [field for field in required_fields if not data.get(field)]
     if missing_fields:
@@ -19,6 +25,16 @@ def validate_location_data(data):
 
 
 def locations(request):
+    """
+    GET: List all locations
+    POST: Create new location
+    Required fields:
+        - room_num: Room identifier
+        - building: Building name
+        - capacity: Maximum capacity
+        - session: Workshop session number
+    Returns 400 for invalid data, 409 for duplicate location
+    """
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -66,6 +82,17 @@ def locations(request):
 
 
 def location_id(request, id):
+    """
+    GET: Get location by ID
+    PUT: Update location
+    DELETE: Delete location
+    Required fields for PUT:
+        - room_num: Room identifier
+        - building: Building name
+        - capacity: Maximum capacity
+        - session: Workshop session number
+    Returns 404 if not found, 400 for invalid data
+    """
     if request.method == "GET":
         data = django_serializers.serialize("json", Location.objects.filter(id=id))
         return HttpResponse(data, content_type="application/json")
@@ -110,6 +137,14 @@ def location_id(request, id):
 
 @csrf_exempt
 def locations_bulk(request):
+    """
+    POST: Bulk upload locations from Excel file (admin only)
+    Required file format:
+        - Excel file with columns: building, room, capacity, session, moveable_seats
+        - No empty cells
+        - Sessions must be 1, 2, or 3
+    Returns 403 for non-admin, 409 if locations exist, 400 for invalid data
+    """
     if request.method == "POST":
         # must be admin
         if not request.user.groups.filter(name="FACTAdmin").exists():

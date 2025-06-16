@@ -3,6 +3,15 @@ from django.contrib.auth.models import User
 
 
 class Location(models.Model):
+    """
+    Represents a physical location for workshops.
+    Fields:
+        room_num: Room identifier
+        building: Building name
+        capacity: Maximum number of attendees
+        session: Workshop session number
+        moveable_seats: Whether room has movable seating
+    """
     room_num = models.CharField(max_length=50, default="")
     building = models.CharField(max_length=50, default="")
     capacity = models.IntegerField(default=0)
@@ -14,6 +23,19 @@ class Location(models.Model):
 
 
 class Facilitator(models.Model):
+    """
+    Represents a workshop facilitator.
+    Fields:
+        user: Associated Django user account
+        fa_name: Display name
+        fa_contact: Contact information
+        department_name: Department affiliation
+        position: Job title/position
+        facilitators: List of additional facilitators
+        image_url: Profile image URL
+        bio: Professional biography
+        attending_networking_session: Networking session attendance flag
+    """
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     fa_name = models.CharField(max_length=100, blank=True)
     fa_contact = models.CharField(max_length=100, blank=True)
@@ -29,6 +51,16 @@ class Facilitator(models.Model):
 
 
 class Workshop(models.Model):
+    """
+    Represents a workshop session.
+    Fields:
+        title: Workshop name
+        description: Detailed description
+        location: Assigned room
+        session: Session number
+        preferred_cap: Preferred capacity
+        moveable_seats: Whether room has movable seating
+    """
     title = models.CharField(max_length=100, default="")
     description = models.TextField()
     location = models.OneToOneField(
@@ -43,6 +75,9 @@ class Workshop(models.Model):
 
 
 class School(models.Model):
+    """
+    Represents a participating school.
+    """
     name = models.CharField(max_length=100)
 
     def __str__(self):
@@ -50,11 +85,23 @@ class School(models.Model):
 
 
 class NewSchool(models.Model):
+    """
+    Temporary model for new school submissions.
+    """
     name = models.CharField(max_length=100)
 
 
 class Delegate(models.Model):
-    # django user model - https://docs.djangoproject.com/en/5.0/topics/auth/default/#user-objects
+    """
+    Represents a workshop participant.
+    Fields:
+        user: Associated Django user account
+        pronouns: Preferred pronouns
+        year: Academic year
+        school: Associated school
+        other_school: Custom school name if not in list
+        date_created: Account creation timestamp
+    """
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     pronouns = models.CharField(max_length=30, default="")
     year = models.CharField(max_length=40, null=True, default="")
@@ -62,7 +109,6 @@ class Delegate(models.Model):
         School, default=None, null=True, on_delete=models.CASCADE
     )
     other_school = models.CharField(max_length=100, null=True, blank=True)
-
     date_created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -70,16 +116,25 @@ class Delegate(models.Model):
 
 
 class Registration(models.Model):
+    """
+    Links delegates to workshops.
+    """
     delegate = models.ForeignKey(Delegate, on_delete=models.CASCADE)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
 
 class FacilitatorRegistration(models.Model):
+    """
+    Links facilitators to workshops.
+    """
     facilitator_name = models.CharField(max_length=200)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
 
 class FacilitatorWorkshop(models.Model):
+    """
+    Links facilitators to workshops with additional metadata.
+    """
     facilitator = models.ForeignKey(Facilitator, on_delete=models.CASCADE)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
@@ -88,18 +143,27 @@ class FacilitatorWorkshop(models.Model):
 
 
 class FacilitatorAssistant(models.Model):
+    """
+    Represents workshop assistants.
+    """
     name = models.CharField(max_length=200)
     contact = models.CharField(max_length=100)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
 
 class PasswordReset(models.Model):
+    """
+    Manages password reset tokens.
+    """
     email = models.EmailField()
     token = models.CharField(max_length=100)
     expiration = models.DateTimeField()
 
 
 class AccountSetUp(models.Model):
+    """
+    Manages account setup tokens.
+    """
     username = models.CharField(max_length=30)
     token = models.CharField(max_length=100)
     expiration = models.DateTimeField()

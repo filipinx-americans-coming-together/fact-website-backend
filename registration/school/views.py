@@ -9,11 +9,9 @@ from registration.models import Delegate, NewSchool, School
 
 def schools(request):
     """
-    Handle requests related to all schools
-
-    GET - get all schools
+    GET: List all schools
+    Returns 405 for non-GET methods
     """
-
     if request.method == "GET":
         school_data = django_serializers.serialize(
             "json", School.objects.all().order_by("name")
@@ -25,6 +23,14 @@ def schools(request):
 
 
 def new_schools(request):
+    """
+    GET: List all new school submissions
+    POST: Approve new school submission (admin only)
+    Required fields for POST:
+        - other_school: Original school name
+        - approved_name: Approved school name
+    Returns 403 for non-admin, 400 for invalid data
+    """
     if request.method == "GET":
         data = django_serializers.serialize("json", NewSchool.objects.all())
         return HttpResponse(data, content_type="application/json")
@@ -62,8 +68,16 @@ def new_schools(request):
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
+
 @csrf_exempt
 def schools_bulk(request):
+    """
+    POST: Bulk upload schools from Excel file (admin only)
+    Required file format:
+        - Excel file with column: name
+        - No empty cells
+    Returns 403 for non-admin, 409 if schools exist, 400 for invalid data
+    """
     if request.method == "POST":
         # must be admin
         if not request.user.groups.filter(name="FACTAdmin").exists():
@@ -120,3 +134,5 @@ def schools_bulk(request):
 
         data = django_serializers.serialize("json", School.objects.all())
         return HttpResponse(data, content_type="application/json")
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)

@@ -28,6 +28,16 @@ environ.Env.read_env()
 
 
 def delegate_me(request):
+    """
+    GET: Get current delegate profile
+    PUT: Update delegate profile and workshop registrations
+    DELETE: Delete delegate account
+    Required fields for PUT:
+        - f_name, l_name, email, password (for auth)
+        - pronouns, year, school_id/other_school_name
+        - workshop_1_id, workshop_2_id, workshop_3_id (all required)
+    Returns 403 if not authenticated, 400 for invalid data, 409 for conflicts
+    """
     user = request.user
 
     if request.method == "GET":
@@ -163,24 +173,17 @@ def delegate_me(request):
 
 def delegates(request):
     """
-    Handle requests related to delegates
-
-    POST - create user
-        {
-            f_name: first name
-            l_name: last name
-            email: email (will act as username)
-            password: password
-            pronouns: pronouns
-            year: year
-            school_id: school
-            other_school_name: school name (if provided)
-            workshop_1_id: id for session 1 workshop
-            workshop_2_id: id for session 2 workshop
-            workshop_3_id: id for session 3 workshop
-        }
+    POST: Create new delegate account
+    Required fields:
+        - f_name, l_name: First and last name
+        - email: Email (used as username)
+        - password: Account password
+        - pronouns: Preferred pronouns
+        - year: Academic year
+        - school_id or other_school_name: School affiliation
+        - workshop_1_id, workshop_2_id, workshop_3_id: Workshop selections
+    Returns 400 for invalid data, 409 for duplicate email
     """
-
     if request.method == "POST":
         data = json.loads(request.body)
 
@@ -319,8 +322,13 @@ def delegates(request):
 
 
 def login_delegate(request):
-    user = request.user
-
+    """
+    POST: Authenticate delegate
+    Required fields:
+        - email: User email
+        - password: Account password
+    Returns 400 for invalid credentials, 403 for non-delegate accounts
+    """
     if request.method == "POST":
         data = json.loads(request.body)
 
@@ -348,11 +356,11 @@ def login_delegate(request):
 
 
 def logout_user(request):
-    user = request.user
+    """
+    POST: Logout current user
+    Returns 200 on success
+    """
     if request.method == "POST":
-        if not user.is_authenticated:
-            return JsonResponse({"message": "No user logged in"}, status=403)
-
         logout(request)
 
         return JsonResponse({"message": "Logout successful"})
@@ -361,6 +369,12 @@ def logout_user(request):
 
 
 def request_password_reset(request):
+    """
+    POST: Request password reset token
+    Required fields:
+        - email: User email
+    Returns 200 on success, 404 if email not found
+    """
     if request.method == "POST":
         data = json.loads(request.body)
 
@@ -409,6 +423,14 @@ def request_password_reset(request):
 
 
 def reset_password(request):
+    """
+    POST: Reset password using token
+    Required fields:
+        - email: User email
+        - token: Reset token
+        - password: New password
+    Returns 400 for invalid data, 404 for invalid token
+    """
     if request.method == "POST":
         data = json.loads(request.body)
 
