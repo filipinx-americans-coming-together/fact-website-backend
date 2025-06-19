@@ -349,7 +349,7 @@ class AgendaItemsPOSTBulk(TestCase):
         # capitalization to make sure processing is case insensitive
         data = {
             "title": titles,
-            "SessIOn_num": sessions,
+            "session_num": sessions,
             "building": buildings,
             "room_num": room_nums,
             "start_time": start_times,
@@ -558,7 +558,7 @@ class AgendaItemsPOSTBulk(TestCase):
                     building=row["building"],
                     room_num="" if pd.isna(row["room_num"]) else row["room_num"],
                     session_num=(
-                        None if pd.isna(row["SessIOn_num"]) else row["SessIOn_num"]
+                        None if pd.isna(row["session_num"]) else row["session_num"]
                     ),
                     address="nan" if pd.isna(row["address"]) else row["address"],
                 ).exists()
