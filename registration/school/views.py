@@ -45,8 +45,8 @@ def new_schools(request):
         other_school = data.get("other_school")
         approved_name = data.get("approved_name")
 
-        if approved_name == None or approved_name == "":
-            return JsonResponse({"message": "Must provide approved name"})
+        if approved_name is None or approved_name == "":
+            return JsonResponse({"message": "Must provide approved name"}, status=400)
 
         # create school object
         school = School.objects.filter(name=approved_name)
