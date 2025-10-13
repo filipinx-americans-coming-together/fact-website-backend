@@ -173,28 +173,16 @@ def delegate_me(request):
 
 def delegates(request):
     """
-    POST: Register delegate
+    POST: Register an existing delegate for workshops
     Required fields:
-        - f_name, l_name: First and last name
         - email: Email (used as username)
-        - password: Account password
-        - pronouns: Preferred pronouns
-        - year: Academic year
-        - school_id or other_school_name: School affiliation
         - workshop_1_id, workshop_2_id, workshop_3_id: Workshop selections
-    Returns 400 for invalid data, 409 for duplicate email
+    Returns 400 for invalid data, 409 for full workshop, 404 if user is not found
     """
     if request.method == "POST":
         data = json.loads(request.body)
 
-        f_name = data.get("f_name")
-        l_name = data.get("l_name")
         email = data.get("email")
-        password = data.get("password")
-        pronouns = data.get("pronouns")
-        year = data.get("year")
-        school_id = data.get("school_id")
-        other_school_name = data.get("other_school_name")
         workshop_1_id = data.get("workshop_1_id")
         workshop_2_id = data.get("workshop_2_id")
         workshop_3_id = data.get("workshop_3_id")
@@ -206,29 +194,6 @@ def delegates(request):
             return JsonResponse(
                 {"message": "Must register for all three sessions"}, status=400
             )
-
-        if not f_name or len(f_name) < 1:
-            return JsonResponse(
-                {"message": "First name must be at least one character"}, status=400
-            )
-
-        if not l_name or len(l_name) < 1:
-            return JsonResponse(
-                {"message": "Last name must be at least one character"}, status=400
-            )
-
-        try:
-            validate_email(email)
-        except:
-            return JsonResponse({"message": "Invalid email"}, status=400)
-
-        if User.objects.filter(email=email).exists():
-            return JsonResponse({"message": "Email already in use"}, status=409)
-
-        try:
-            validate_password(password)
-        except:
-            return JsonResponse({"message": "Password is too weak"}, status=400)
 
         sessions = []
         for workshop_id in workshop_ids:
@@ -264,27 +229,13 @@ def delegates(request):
                     {"message": f"{workshop.title} is full"}, status=409
                 )
 
-        # set user data
-        user = User(username=email, email=email, first_name=f_name, last_name=l_name)
-        user.set_password(password)
+        # check user exists
+        try:
+            user = User.objects.get(email=email)
+        except:
+            return JsonResponse({"message": "User not found"}, status=404)
 
-        user.save()
-
-        # set delegate data
-        delegate = Delegate(user=user, pronouns=pronouns, year=year)
-
-        if school_id:
-            if (
-                str(school_id).isdigit()
-                and School.objects.filter(pk=school_id).exists()
-            ):
-                user.delegate.school_id = school_id
-        elif other_school_name and len(other_school_name) > 0:
-            user.delegate.other_school = other_school_name
-
-            NewSchool.objects.create(name=other_school_name)
-
-        delegate.save()
+        delegate = user.delegate
 
         workshop_details = {}
 
@@ -302,13 +253,13 @@ def delegates(request):
         login(request, user)
 
         # send email
-        subject = f"FACT 2025 Registration Confirmation - {f_name} {l_name}"
+        subject = f"FACT 2025 Registration Confirmation - {delegate.f_name} {delegate.l_name}"
 
         registration_details = ""
         for session in workshop_details:
             registration_details += f"Session {session}: {workshop_details[session]}\n"
 
-        body = f"Thank you for registering for FACT 2025!\n\nYou have registered for the following workshops\n\n{registration_details}\nFor day-of updates, please text @fact2025 to 81010 to sign up for reminders using the Remind app! To update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard"
+        body = f"Thank you for registering for FACT 2025!\n\nYou have registered for the following workshops\n\n{registration_details}\nFor day-of updates, please text @fact2025 to 81010 to sign up for reminders using the Remind app! To update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard.\nWant to connect with other delegates? Follow @factcommitments2025 on Instagram to see who's committed to FACT!\nFill out https://docs.google.com/forms/d/e/1FAIpQLSeE8RD4cOcc3Mnz-MNynE5op1N5H4em3ZWGfwz6UHJMErb9Mg/viewform to be posted!"
         from_email = env("EMAIL_HOST_USER")
         to_email = [email]
 
@@ -391,15 +342,6 @@ def create_delegate(request):
 
         # login
         login(request, user)
-
-        # send email
-        subject = f"FACT 2025 Account Creation Confirmation - {f_name} {l_name}"
-
-        body = f"Thank you for creating an account. Please make sure to register for workshops to enjoy FACT 2025!"
-        from_email = env("EMAIL_HOST_USER")
-        to_email = [email]
-
-        send_mail(subject, body, from_email, to_email)
 
         return HttpResponse(
             serializers.serialize_user(user), content_type="application/json"
