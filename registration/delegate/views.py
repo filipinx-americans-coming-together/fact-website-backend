@@ -173,7 +173,7 @@ def delegate_me(request):
 
 def delegates(request):
     """
-    POST: Create new delegate account
+    POST: Register delegate
     Required fields:
         - f_name, l_name: First and last name
         - email: Email (used as username)
@@ -302,13 +302,13 @@ def delegates(request):
         login(request, user)
 
         # send email
-        subject = f"FACT 2024 Registration Confirmation - {f_name} {l_name}"
+        subject = f"FACT 2025 Registration Confirmation - {f_name} {l_name}"
 
         registration_details = ""
         for session in workshop_details:
             registration_details += f"Session {session}: {workshop_details[session]}\n"
 
-        body = f"Thank you for registering for FACT 2024!\n\nYou have registered for the following workshops\n\n{registration_details}\nFor day-of updates, please text @fact2024 to 81010 to sign up for reminders using the Remind app! To update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard"
+        body = f"Thank you for registering for FACT 2025!\n\nYou have registered for the following workshops\n\n{registration_details}\nFor day-of updates, please text @fact2025 to 81010 to sign up for reminders using the Remind app! To update your personal information, change workshops, and view up to date conference information, visit fact.psauiuc.org/my-fact/dashboard"
         from_email = env("EMAIL_HOST_USER")
         to_email = [email]
 
@@ -320,6 +320,92 @@ def delegates(request):
     else:
         return JsonResponse({"message": "Method not allowed"}, status=405)
 
+def create_delegate(request):
+    """
+    POST: Create new delegate account
+    Required fields:
+        - f_name, l_name: First and last name
+        - email: Email (used as username)
+        - password: Account password
+        - pronouns: Preferred pronouns
+        - year: Academic year
+        - school_id or other_school_name: School affiliation
+    Returns 400 for invalid data, 409 for duplicate email
+    """
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        f_name = data.get("f_name")
+        l_name = data.get("l_name")
+        email = data.get("email")
+        password = data.get("password")
+        pronouns = data.get("pronouns")
+        year = data.get("year")
+        school_id = data.get("school_id")
+        other_school_name = data.get("other_school_name")
+
+        if not f_name or len(f_name) < 1:
+            return JsonResponse(
+                {"message": "First name must be at least one character"}, status=400
+            )
+
+        if not l_name or len(l_name) < 1:
+            return JsonResponse(
+                {"message": "Last name must be at least one character"}, status=400
+            )
+
+        try:
+            validate_email(email)
+        except:
+            return JsonResponse({"message": "Invalid email"}, status=400)
+
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({"message": "Email already in use"}, status=409)
+
+        try:
+            validate_password(password)
+        except:
+            return JsonResponse({"message": "Password is too weak"}, status=400)
+
+        # set user data
+        user = User(username=email, email=email, first_name=f_name, last_name=l_name)
+        user.set_password(password)
+
+        user.save()
+
+        # set delegate data
+        delegate = Delegate(user=user, pronouns=pronouns, year=year)
+
+        if school_id:
+            if (
+                str(school_id).isdigit()
+                and School.objects.filter(pk=school_id).exists()
+            ):
+                user.delegate.school_id = school_id
+        elif other_school_name and len(other_school_name) > 0:
+            user.delegate.other_school = other_school_name
+
+            NewSchool.objects.create(name=other_school_name)
+
+        delegate.save()
+
+        # login
+        login(request, user)
+
+        # send email
+        subject = f"FACT 2025 Account Creation Confirmation - {f_name} {l_name}"
+
+        body = f"Thank you for creating an account. Please make sure to register for workshops to enjoy FACT 2025!"
+        from_email = env("EMAIL_HOST_USER")
+        to_email = [email]
+
+        send_mail(subject, body, from_email, to_email)
+
+        return HttpResponse(
+            serializers.serialize_user(user), content_type="application/json"
+        )
+    else:
+        return JsonResponse({"message": "Method not allowed"}, status=405)
 
 def login_delegate(request):
     """

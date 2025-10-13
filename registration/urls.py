@@ -34,6 +34,7 @@ urlpatterns = [
     ),
     path("delegates/me/", delegate_views.delegate_me, name="delegates_me"),
     path("delegates/", delegate_views.delegates, name="delegates"),
+    path("delegates/create-account", delegate_views.create_delegate, name="delegates_create"),
     path("delegates/login/", delegate_views.login_delegate, name="delegates_login"),
     path("schools/", school_views.schools, name="schools"),
     path("schools/bulk/", school_views.schools_bulk, name="schools_bulk"),
