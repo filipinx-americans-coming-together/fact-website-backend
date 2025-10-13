@@ -27,12 +27,16 @@ class AgendaItem(models.Model):
         help_text="The title or name of the agenda item"
     )
     building = models.CharField(
+        null=True,
+        blank=True,
         max_length=100,
-        help_text="The building where the event will take place"
+        help_text="Optional building where the event will take place"
     )
     room_num = models.CharField(
+        null=True,
+        blank=True,
         max_length=100,
-        help_text="The room number where the event will take place"
+        help_text="Optional room number where the event will take place"
     )
     start_time = models.DateTimeField(
         help_text="The scheduled start time of the event"
