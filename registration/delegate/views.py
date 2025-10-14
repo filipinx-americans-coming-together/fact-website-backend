@@ -143,19 +143,6 @@ def delegate_me(request):
             for workshop_id in workshop_ids:
                 workshop = Workshop.objects.get(pk=workshop_id)
 
-                # workshop cap
-                registrations = (
-                    Registration.objects.filter(workshop_id=workshop_id).count()
-                    + FacilitatorRegistration.objects.filter(
-                        workshop_id=workshop_id
-                    ).count()
-                )
-
-                if registrations >= workshop.location.capacity:
-                    return JsonResponse(
-                        {"message": f"{workshop.title} is full"}, status=409
-                    )
-
                 registration = Registration(delegate=user.delegate, workshop=workshop)
 
                 registration.save()
