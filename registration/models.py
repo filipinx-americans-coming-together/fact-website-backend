@@ -37,9 +37,9 @@ class Facilitator(models.Model):
         attending_networking_session: Networking session attendance flag
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    fa_name = models.CharField(max_length=100, blank=True)
-    fa_contact = models.CharField(max_length=100, blank=True)
-    department_name = models.CharField(max_length=100)
+    fa_name = models.CharField(max_length=150, blank=True)
+    fa_contact = models.CharField(max_length=150, blank=True)
+    department_name = models.CharField(max_length=150)
     position = models.CharField(null=True, blank=True, max_length=200)
     facilitators = models.JSONField(default=list)
     image_url = models.URLField()
@@ -61,7 +61,7 @@ class Workshop(models.Model):
         preferred_cap: Preferred capacity
         moveable_seats: Whether room has movable seating
     """
-    title = models.CharField(max_length=100, default="")
+    title = models.CharField(max_length=150, default="")
     description = models.TextField()
     location = models.OneToOneField(
         Location, on_delete=models.CASCADE, null=True, blank=True
@@ -78,7 +78,7 @@ class School(models.Model):
     """
     Represents a participating school.
     """
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=150)
 
     def __str__(self):
         return f"{self.name}"
@@ -88,7 +88,7 @@ class NewSchool(models.Model):
     """
     Temporary model for new school submissions.
     """
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=150)
 
 
 class Delegate(models.Model):
@@ -108,7 +108,7 @@ class Delegate(models.Model):
     school = models.ForeignKey(
         School, default=None, null=True, on_delete=models.CASCADE
     )
-    other_school = models.CharField(max_length=100, null=True, blank=True)
+    other_school = models.CharField(max_length=150, null=True, blank=True)
     date_created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -147,7 +147,7 @@ class FacilitatorAssistant(models.Model):
     Represents workshop assistants.
     """
     name = models.CharField(max_length=200)
-    contact = models.CharField(max_length=100)
+    contact = models.CharField(max_length=150)
     workshop = models.ForeignKey(Workshop, on_delete=models.CASCADE)
 
 
@@ -156,7 +156,7 @@ class PasswordReset(models.Model):
     Manages password reset tokens.
     """
     email = models.EmailField()
-    token = models.CharField(max_length=100)
+    token = models.CharField(max_length=150)
     expiration = models.DateTimeField()
 
 
@@ -165,5 +165,5 @@ class AccountSetUp(models.Model):
     Manages account setup tokens.
     """
     username = models.CharField(max_length=30)
-    token = models.CharField(max_length=100)
+    token = models.CharField(max_length=150)
     expiration = models.DateTimeField()
