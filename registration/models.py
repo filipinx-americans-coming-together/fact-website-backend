@@ -61,7 +61,7 @@ class Workshop(models.Model):
         preferred_cap: Preferred capacity
         moveable_seats: Whether room has movable seating
     """
-    title = models.CharField(max_length=100, default="")
+    title = models.CharField(max_length=115, default="")
     description = models.TextField()
     location = models.OneToOneField(
         Location, on_delete=models.CASCADE, null=True, blank=True
