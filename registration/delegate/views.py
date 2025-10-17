@@ -68,6 +68,7 @@ def delegate_me(request):
         workshop_3_id = data.get("workshop_3_id")
 
         workshop_ids = [workshop_1_id, workshop_2_id, workshop_3_id]
+        print(workshop_ids)
 
         # update data
 
@@ -146,10 +147,6 @@ def delegate_me(request):
                 registration = Registration(delegate=user.delegate, workshop=workshop)
 
                 registration.save()
-        else:
-            return JsonResponse(
-                {"message": "Must register for all three sessions"}, status=400
-            )
 
         user.save()
         user.delegate.save()
