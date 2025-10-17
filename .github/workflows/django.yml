@@ -38,6 +38,6 @@ jobs:
         EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
         RESET_PASSWORD_URL: ${{ secrets.RESET_PASSWORD_URL }}
         ACCOUNT_SETUP_URL: ${{ secrets.ACCOUNT_SETUP_URL }}
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DEVELOPMENT_MODE: ${{ secrets.DEVELOPMENT_MODE }}
       run: |
         python manage.py test
