@@ -138,13 +138,13 @@ def delegate_me(request):
 
                 # workshop cap
                 registrations = (
-                    Registration.objects.filter(workshop_id=workshop_id).count()
+                    Registration.objects.filter(workshop_id=workshop_id)
+                    .exclude(delegate=user.delegate)
+                    .count()
                     + FacilitatorRegistration.objects.filter(
                         workshop_id=workshop_id
                     ).count()
                 )
-
-                print(registrations)
 
                 if registrations >= workshop.location.capacity:
                     return JsonResponse(
