@@ -82,7 +82,8 @@ def summary(request):
         )
 
     if request.method == "GET":
-        delegates = Delegate.objects.all().count()
+        # delegates = Delegate.objects.all().count()
+        delegates = Registration.objects.values("delegate").distinct().count()
         schools = (
             Delegate.objects.values("school")
             .distinct()
