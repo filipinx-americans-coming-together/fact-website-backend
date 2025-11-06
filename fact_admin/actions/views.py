@@ -251,7 +251,6 @@ def location_sheet(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-@csrf_exempt
 def send_facilitator_links(request):
     """
     POST: Print (instead of send) individual login links to facilitators (admin only)
@@ -338,8 +337,6 @@ def send_facilitator_links(request):
             # print(f"Subject: {subject}")
             # print(f"Body:\n{body}")
             # print("=========================================\n")
-
-            sent_count += 1
             
             try:
                 send_mail(subject, body, from_email, to_email)
