@@ -318,15 +318,15 @@ def send_facilitator_links(request):
             login_url = f"{os.getenv('ACCOUNT_SET_UP_URL')}/{account_setup.token}"
 
             from_email = os.getenv("EMAIL_HOST_USER")
-            to_email = ["fact.it@psauiuc.org"]
+            to_email = [email.strip() for email in facilitator_email.split(",")]
             
             subject = (f"FACT 2025 Facilitator Account - {facilitator.department_name}")
             body = (
-                f"Hello {facilitator.department_name},\n\n"
+                f"Dear {facilitator.department_name},\n\n"
                 "As a part of the FACT registration system, each facilitator can access a dashboard showing up to date information on your workshop location and number of delegates registered for your workshop(s). These accounts are meant to supplement your experience as a facilitator and will be deactivated once FACT 2025 has concluded.\n\n"
                 "You will also be able to register for workshops through this account. In your facilitator dashboard, there is an area to register each individual facilitator (one for each individual facilitator name that you provided on the confirmation form) for workshops. Registration is not required for facilitators, but if you have time, we highly recommend checking out the other workshops! We ask that you use the facilitator portal, not the standard/delegate registration page to register for workshops in order to help keep our registration numbers as accurate as possible.\n\n"
-                f"To access your account visit:\n{login_url}\n\n"
-                f"Your username has been automatically generated, and is {account_setup.username}. We do not support username changes at this time. Upon visiting the provided link, you will be prompted to provide an email and password to finish setting up your account. The provided link will expire on Friday, November 14th at 11:59pm.\n\n"
+                f"To access your account visit: {login_url}\n\n"
+                f"Your username is: {account_setup.username}\n\nWe do not support username changes at this time. Upon visiting the provided link, you will be prompted to provide an email and password to finish setting up your account. The provided link will expire on Friday, November 14th at 11:59pm.\n\n"
                 "We recommend that only one member of your organization/department handles and has access to this account to reduce the risk of compromising passwords.\n\n"
                 "After you have set up your account, you can visit https://fact.psauiuc.org/my-fact/login to login (make sure to select “Facilitator” before attempting to login!) to view your workshop information.\n\n"
                 "If you encounter any issues with accessing your account, please contact FACT IT at fact.it@psauiuc.org."
