@@ -344,7 +344,7 @@ def send_facilitator_links(request):
                 sent_count += 1
                 
                 try:
-                    send_email(subject, body, from_email, to_email)
+                    send_mail(subject, body, from_email, to_email)
                     sent_count += 1
                 except Exception as e:
                     failed.append(f"Failed to send email to {facilitator_email}: {str(e)}")
