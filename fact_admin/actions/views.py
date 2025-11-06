@@ -251,6 +251,7 @@ def location_sheet(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
+@csrf_exempt
 def send_facilitator_links(request):
     """
     POST: Print (instead of send) individual login links to facilitators (admin only)
@@ -259,10 +260,10 @@ def send_facilitator_links(request):
         - 'Facilitator Email'
     Prints each facilitator's personalized email to console for verification.
     """
-    # if not request.user.groups.filter(name="FACTAdmin").exists():
-    #     return JsonResponse(
-    #         {"message": "Must be admin to make this request"}, status=403
-    #     )
+    if not request.user.groups.filter(name="FACTAdmin").exists():
+        return JsonResponse(
+            {"message": "Must be admin to make this request"}, status=403
+        )
 
     if request.method == "POST":
         if "emails" not in request.FILES:
