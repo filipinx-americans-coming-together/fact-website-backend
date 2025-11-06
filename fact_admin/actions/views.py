@@ -251,14 +251,14 @@ def location_sheet(request):
         return JsonResponse({"message": "method not allowed"}, status=405)
 
 
-# TODO: change to send individual emails to facilitators
-# TODO: change recipients to facilitator emails
 @csrf_exempt
 def send_facilitator_links(request):
     """
-    POST: Send login links to all existing facilitators (admin only)
-    Uses existing AccountSetUp records to send facilitators their login links
-    Returns 403 for non-admin, 200 on success
+    POST: Print (instead of send) individual login links to facilitators (admin only)
+    Requires uploaded Excel file with:
+        - 'Facilitator Name' (matches Facilitator.department_name)
+        - 'Facilitator Email'
+    Prints each facilitator's personalized email to console for verification.
     """
     # if not request.user.groups.filter(name="FACTAdmin").exists():
     #     return JsonResponse(
@@ -266,45 +266,86 @@ def send_facilitator_links(request):
     #     )
 
     if request.method == "POST":
-        facilitators = Facilitator.objects.all()
+        if "emails" not in request.FILES:
+            return JsonResponse({"message": "Must include Excel file as 'emails'"}, status=400)
+        
+        file = request.FILES["emails"]
 
+        try:
+            df = pd.read_excel(file)
+        except Exception as e:
+            return JsonResponse({"message": f"Error reading Excel file: {str(e)}"}, status=400)
+        
+        # validate required columns
+        # NOTE: EXCEL SHEET SHOULD BE FORMATTED WITH COLUMNS AS ROW 1 AND ALL SESSION IN SAME SHEET
+        df.columns = [col.strip() for col in df.columns]
+        expected_columns = {"Facilitator Name", "Facilitator Email"}
+        if not expected_columns.issubset(df.columns):
+            return JsonResponse(
+                {"message": f"Excel file must contain the following columns: {', '.join(expected_columns)}"},
+                status=400
+            )
+
+        df["Facilitator Email"] = df["Facilitator Email"].str.strip().str.lower()
+        df["Facilitator Name"] = df["Facilitator Name"].str.strip()
+
+        facilitators = Facilitator.objects.all()
         if facilitators.count() == 0:
             return JsonResponse(
                 {"message": "No facilitators found"}, status=404
             )
 
-        # Collect facilitator info with their account setup tokens
-        facilitator_links = []
-        for facilitator in facilitators:
-            account_setup = AccountSetUp.objects.filter(username=facilitator.user.username).first()
-            
-            if account_setup:
-                # Login link using the stored token
-                login_url = f"{os.getenv('ACCOUNT_SET_UP_URL')}/{account_setup.token}"
-                
-                facilitator_links.append(
-                    (facilitator.department_name, facilitator.user.username, login_url)
-                )
+        sent_count = 0
+        failed = []
 
-        if not facilitator_links:
-            return JsonResponse(
-                {"message": "No account setups found for facilitators"}, status=404
+        # Collect facilitator info with their account setup tokens
+        for facilitator in facilitators:
+            name_key = str(facilitator.department_name).strip()
+            match = df.loc[df["Facilitator Name"] == name_key]
+
+            if match.empty:
+                failed.append(f"No matching email for facilitator: {facilitator.department_name}")
+                continue
+
+            facilitator_email = match.iloc[0]["Facilitator Email"]
+            account_setup = AccountSetUp.objects.filter(username=facilitator.user.username).first()
+            if not account_setup:
+                failed.append(f"No account setup found for facilitator: {facilitator.department_name}")
+                continue
+        
+            # Login link using the stored token
+            login_url = f"{os.getenv('ACCOUNT_SET_UP_URL')}/{account_setup.token}"
+
+            from_email = os.getenv("EMAIL_HOST_USER")
+            to_email = [facilitator_email]
+            
+            subject = "Your FACT Facilitator Login Link"
+            body = (
+                f"Dear {facilitator.department_name},\n\n"
+                f"Here is your login link for FACT:\n{login_url}\n\n"
+                "Please keep this link private.\n\n"
             )
 
-        # Send email with all facilitator links
-        subject = "FACT Facilitator Login Links"
-        body = "Facilitator login links:\n\n"
+            # Print email details to console instead of sending for testing
+            print("=========================================")
+            print(f"To: {facilitator_email}")
+            print(f"Subject: {subject}")
+            print(f"Body:\n{body}")
+            print("=========================================\n")
 
-        for facilitator in facilitator_links: # TODO: change to send individual emails
-            body += f"Facilitator: {facilitator[0]}\nUsername: {facilitator[1]}\nLogin Link: {facilitator[2]}\n\n"
-
-        from_email = os.getenv("EMAIL_HOST_USER")
-        to_email = ["fact.it@psauiuc.org"] # TODO: change to facilitator email
-
-        send_mail(subject, body, from_email, to_email)
+            sent_count += 1
+            
+            # try:
+            #     send_email(subject, body, from_email, to_email)
+            #     sent_count += 1
+            # except Exception as e:
+            #     failed.append(f"Failed to send email to {facilitator_email}: {str(e)}")
 
         return JsonResponse(
-            {"message": f"Successfully sent login links for {len(facilitator_links)} facilitators"},
+            {
+                "message": f"Successfully sent {sent_count} facilitator emails.",
+                "failed": failed,
+            },
             status=200
         )
     else:
