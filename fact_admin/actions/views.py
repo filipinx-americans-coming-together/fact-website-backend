@@ -3,11 +3,14 @@ from django.http import FileResponse, HttpResponse, JsonResponse
 from django.core import serializers as django_serializers
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import send_mail
+import os
 
 import pandas as pd
 
 from fact_admin.models import RegistrationFlag
-from registration.models import Delegate, Location, Registration, School, Workshop
+from registration.models import Delegate, Location, Registration, School, Workshop, Facilitator, AccountSetUp
 
 # set workshop locations
 # get summary (sheet)
@@ -244,5 +247,65 @@ def location_sheet(request):
         response = FileResponse(open(file_path, "rb"))
         response["Content-Disposition"] = f'attachment; filename="{file_path}"'
         return response
+    else:
+        return JsonResponse({"message": "method not allowed"}, status=405)
+
+
+# TODO: change to send individual emails to facilitators
+# TODO: change recipients to facilitator emails
+@csrf_exempt
+def send_facilitator_links(request):
+    """
+    POST: Send login links to all existing facilitators (admin only)
+    Uses existing AccountSetUp records to send facilitators their login links
+    Returns 403 for non-admin, 200 on success
+    """
+    # if not request.user.groups.filter(name="FACTAdmin").exists():
+    #     return JsonResponse(
+    #         {"message": "Must be admin to make this request"}, status=403
+    #     )
+
+    if request.method == "POST":
+        facilitators = Facilitator.objects.all()
+
+        if facilitators.count() == 0:
+            return JsonResponse(
+                {"message": "No facilitators found"}, status=404
+            )
+
+        # Collect facilitator info with their account setup tokens
+        facilitator_links = []
+        for facilitator in facilitators:
+            account_setup = AccountSetUp.objects.filter(username=facilitator.user.username).first()
+            
+            if account_setup:
+                # Login link using the stored token
+                login_url = f"{os.getenv('ACCOUNT_SET_UP_URL')}/{account_setup.token}"
+                
+                facilitator_links.append(
+                    (facilitator.department_name, facilitator.user.username, login_url)
+                )
+
+        if not facilitator_links:
+            return JsonResponse(
+                {"message": "No account setups found for facilitators"}, status=404
+            )
+
+        # Send email with all facilitator links
+        subject = "FACT Facilitator Login Links"
+        body = "Facilitator login links:\n\n"
+
+        for facilitator in facilitator_links: # TODO: change to send individual emails
+            body += f"Facilitator: {facilitator[0]}\nUsername: {facilitator[1]}\nLogin Link: {facilitator[2]}\n\n"
+
+        from_email = os.getenv("EMAIL_HOST_USER")
+        to_email = ["fact.it@psauiuc.org"] # TODO: change to facilitator email
+
+        send_mail(subject, body, from_email, to_email)
+
+        return JsonResponse(
+            {"message": f"Successfully sent login links for {len(facilitator_links)} facilitators"},
+            status=200
+        )
     else:
         return JsonResponse({"message": "method not allowed"}, status=405)
