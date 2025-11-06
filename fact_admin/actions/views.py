@@ -312,7 +312,7 @@ def send_facilitator_links(request):
                 failed.append(f"No account setup found for facilitator: {facilitator.department_name}")
                 continue
 
-            facilitator_email = row["Facilitator Email"]
+            facilitator_email = match.iloc[0]["Facilitator Email"]
     
             # Login link using the stored token
             login_url = f"{os.getenv('ACCOUNT_SET_UP_URL')}/{account_setup.token}"
