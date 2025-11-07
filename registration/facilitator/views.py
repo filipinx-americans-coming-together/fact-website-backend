@@ -19,6 +19,7 @@ from registration.models import (
     FacilitatorRegistration,
     FacilitatorWorkshop,
     Workshop,
+    Registration
 )
 
 
@@ -339,12 +340,12 @@ def create_facilitator_account(department_name):
 
 def register_facilitator(request):
     """
-    POST: Register new facilitator account
+    PUT: Register new facilitator account
     Required fields:
         - department_name: Department name
     Returns 400 for invalid data
     """
-    if request.method == "POST":
+    if request.method == "PUT":
         data = json.loads(request.body)
 
         workshops = data.get("workshops")
@@ -355,15 +356,15 @@ def register_facilitator(request):
                 {"message": "Must provide facilitator name and workshop"}, status=400
             )
 
-        if facilitator_name not in [
-            name.strip() for name in facilitator.facilitators.split(",")
-        ]:
-            return JsonResponse(
-                {
-                    "message": f"Could not find facilitator with the name '{facilitator_name}'"
-                },
-                status=404,
-            )
+        # if facilitator_name not in [
+        #     name.strip() for name in facilitator.facilitators.split(",")
+        # ]:
+        #     return JsonResponse(
+        #         {
+        #             "message": f"Could not find facilitator with the name '{facilitator_name}'"
+        #         },
+        #         status=404,
+        #     )
 
         sessions = set()
         for workshop in workshops:
@@ -395,6 +396,24 @@ def register_facilitator(request):
 
         for workshop in workshops:
             if workshop:
+                workshop_obj = Workshop.objects.get(pk=int(workshop))
+
+                # workshop cap
+                capacity = (
+                    Registration.objects.filter(workshop_id=workshop)
+                    .count()
+                    + FacilitatorRegistration.objects.filter(
+                        workshop_id=workshop
+                    )
+                    .exclude(facilitator_name=facilitator_name)
+                    .count()
+                )
+
+                if capacity >= workshop_obj.location.capacity:
+                    return JsonResponse(
+                        {"message": f"{workshop_obj.title} is full"}, status=409
+                    )
+                
                 registration = FacilitatorRegistration(
                     facilitator_name=facilitator_name, workshop_id=workshop
                 )
